@@ -156,7 +156,10 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
     }
   };
 
-  const pollVotes = (num: number) => votes.filter(v => v.pollNumber === num);
+  const pollVotes = votes.filter(v => v.pollNumber === selectedPoll);
+  const totalInSelected = pollVotes.length;
+  const yesInSelected = pollVotes.filter(v => v.choice === 'yes').length;
+  const noInSelected = pollVotes.filter(v => v.choice === 'no').length;
 
   return (
     <div className="grid grid-cols-12 gap-8 pb-20">
@@ -269,13 +272,13 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
             <div className="flex flex-col gap-6 mt-8">
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-end">
-                  <span className="serif italic text-4xl text-pink-100">{totalYes}</span>
-                  <span className="text-[10px] uppercase opacity-40 tracking-widest font-bold">Yes Affirmations</span>
+                  <span className="serif italic text-4xl text-pink-100">{yesInSelected}</span>
+                  <span className="text-[10px] uppercase opacity-40 tracking-widest font-bold">Yes Affirmations ({totalInSelected > 0 ? Math.round((yesInSelected / totalInSelected) * 100) : 0}%)</span>
                 </div>
                 <div className="w-full h-[6px] bg-pink-900/40 rounded-full overflow-hidden">
                   <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(totalYes / (totalYes + totalNo || 1)) * 100}%` }}
+                    initial={false}
+                    animate={{ width: `${(yesInSelected / (totalInSelected || 1)) * 100}%` }}
                     className="h-full bg-primary glow-pink"
                   />
                 </div>
@@ -283,13 +286,13 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
 
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-end">
-                  <span className="serif italic text-4xl text-purple-200">{totalNo}</span>
-                  <span className="text-[10px] uppercase opacity-40 tracking-widest font-bold">No Negations</span>
+                  <span className="serif italic text-4xl text-purple-200">{noInSelected}</span>
+                  <span className="text-[10px] uppercase opacity-40 tracking-widest font-bold">No Negations ({totalInSelected > 0 ? Math.round((noInSelected / totalInSelected) * 100) : 0}%)</span>
                 </div>
                 <div className="w-full h-[6px] bg-pink-900/40 rounded-full overflow-hidden">
                   <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(totalNo / (totalYes + totalNo || 1)) * 100}%` }}
+                    initial={false}
+                    animate={{ width: `${(noInSelected / (totalInSelected || 1)) * 100}%` }}
                     className="h-full bg-secondary"
                   />
                 </div>
@@ -298,7 +301,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
             
             <div className="text-center">
               <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/40 block mb-1">Total Voices Collected</span>
-              <span className="serif text-2xl italic text-pink-100/80">{votes.filter(v => v.pollNumber === selectedPoll).length} Responses</span>
+              <span className="serif text-2xl italic text-pink-100/80">{totalInSelected} Responses</span>
             </div>
           </div>
         </div>
@@ -404,8 +407,10 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
         choice,
         timestamp: serverTimestamp()
       });
+      console.log("Vote success:", voteId);
     } catch (err) {
-      console.error(err);
+      console.error("Vote failed:", err);
+      alert("Metaphysical disruption: " + (err instanceof Error ? err.message : "Rule violation"));
     } finally {
       setCasting(false);
     }
@@ -552,13 +557,23 @@ export default function App() {
     if (!user) return;
 
     const isAdmin = user.email === ADMIN_EMAIL;
+    // Removing orderBy to ensure all docs are fetched even if timestamp is pending (optimistic updates)
     const votesQuery = isAdmin 
-      ? query(collection(db, 'votes'), orderBy('timestamp', 'desc'))
+      ? query(collection(db, 'votes'))
       : query(collection(db, 'votes'), where('userId', '==', user.uid));
 
     const unsubVotes = onSnapshot(votesQuery, (snap) => {
-      const vData = snap.docs.map(d => d.data() as Vote);
+      // Sort locally to avoid query constraints on pending timestamps
+      const vData = snap.docs
+        .map(d => d.data() as Vote)
+        .sort((a, b) => {
+          const tA = a.timestamp?.toMillis ? a.timestamp.toMillis() : (a.timestamp || 0);
+          const tB = b.timestamp?.toMillis ? b.timestamp.toMillis() : (b.timestamp || 0);
+          return tB - tA;
+        });
       setVotes(vData);
+    }, (err) => {
+      console.error("Votes listener error:", err);
     });
 
     return () => unsubVotes();
@@ -569,9 +584,13 @@ export default function App() {
       setUserVote(null);
       return;
     }
-    const currentVote = votes.find(v => v.pollNumber === systemState.currentPollNumber);
+    // Refined userVote detection: Ensure we only look at local user's vote even if admin
+    const currentVote = votes.find(v => 
+      v.pollNumber === systemState.currentPollNumber && 
+      v.userId === user.uid
+    );
     setUserVote(currentVote || null);
-  }, [votes, systemState.currentPollNumber, user]);
+  }, [votes, systemState.currentPollNumber, user?.uid]);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 

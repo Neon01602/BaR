@@ -73,7 +73,7 @@ service cloud.firestore {
                     incoming().pollNumber == getSystemState().currentPollNumber &&
                     getSystemState().isActive == true &&
                     // Enforce one vote per user per poll via document ID: pollNumber_userId
-                    voteId == (incoming().pollNumber.toString() + "_" + request.auth.uid);
+                    voteId == (string(incoming().pollNumber) + "_" + request.auth.uid);
 
       // Votes are immutable for users, but admin can purge them for resets
       allow update: if false;
