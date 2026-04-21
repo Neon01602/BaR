@@ -424,21 +424,22 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
         {showWaitingRoom ? (
           <motion.div 
             key="inactive"
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="max-w-md w-full glass p-8 rounded-[2rem]"
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="max-w-md w-full glass p-10 md:p-16 rounded-[3rem] border border-white/10 shadow-2xl flex flex-col items-center"
           >
-            <div className="mb-6 p-4 bg-primary/10 rounded-full inline-block glow-pink border border-primary/20">
+            <div className="mb-8 p-5 bg-primary/10 rounded-full inline-block glow-pink border border-primary/20">
               <Sparkles className="w-10 h-10 text-primary" />
             </div>
-            <p className="text-pink-100/40 font-bold text-xs tracking-[0.4em] uppercase mb-4">
+            <div className="px-4 py-1.5 rounded-full bg-pink-900/20 border border-pink-900/30 text-[10px] font-black text-pink-300 tracking-[0.4em] uppercase mb-6">
               Poll number {currentPoll.currentPollNumber}
-            </p>
-            <p className="text-pink-100/60 font-light text-sm md:text-lg tracking-wide uppercase">
+            </div>
+            <div className="w-12 h-0.5 bg-primary/20 rounded-full mb-8" />
+            <p className="text-pink-100/60 font-light text-base md:text-xl tracking-wide uppercase leading-relaxed max-w-[280px] md:max-w-none">
               {isTimedOut 
-                ? 'Please await the next revelation.' 
-                : 'The next session is being prepared.'}
+                ? 'Information access restricted. Awaiting new session.' 
+                : 'The next session is being synthesized.'}
             </p>
           </motion.div>
         ) : userVote ? (
@@ -446,25 +447,25 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
             key="voted"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass p-8 md:p-12 rounded-[2.5rem] border-primary/30 border-2 max-w-sm md:max-w-lg w-full relative overflow-hidden"
+            className="w-full max-w-md md:max-w-xl glass p-10 md:p-16 rounded-[3rem] border-2 border-primary/30 shadow-2xl relative overflow-hidden flex flex-col items-center"
           >
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 blur-[80px] rounded-full" />
-            <div className="mb-6 flex justify-center">
-              <div className="p-4 bg-primary/10 rounded-full glow-pink border border-primary/30">
-                <Check className="w-8 h-8 md:w-12 md:h-12 text-primary" />
+            <div className="mb-8 flex justify-center">
+              <div className="p-5 bg-primary/10 rounded-full glow-pink border border-primary/30">
+                <Check className="w-10 h-10 md:w-16 md:h-16 text-primary" />
               </div>
             </div>
-            <p className="text-pink-100/60 font-bold text-xs tracking-[0.4em] uppercase mb-4">
+            <div className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary tracking-[0.4em] uppercase mb-8">
               Poll number {userVote.pollNumber}
-            </p>
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-pink-100/30 font-bold uppercase tracking-[0.4em] text-[10px]">Your Response</p>
-              <span className={`text-5xl md:text-7xl font-black active-glow tracking-tighter ${userVote.choice === 'yes' ? 'text-primary' : 'text-purple-300'}`}>
+            </div>
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-pink-100/30 font-bold uppercase tracking-[0.5em] text-[10px]">Decision Recorded</p>
+              <span className={`text-6xl md:text-8xl font-black active-glow tracking-tighter ${userVote.choice === 'yes' ? 'text-primary' : 'text-purple-300'}`}>
                 {userVote.choice.toUpperCase()}
               </span>
             </div>
-            <div className="mt-8 pt-6 border-t border-pink-900/40">
-              <p className="text-xs text-pink-100/40 font-bold tracking-[0.3em] uppercase">Gratitude for presence</p>
+            <div className="mt-12 pt-8 border-t border-white/10 w-full">
+              <p className="text-[10px] text-pink-100/40 font-black tracking-[0.5em] uppercase">Identity Verified</p>
             </div>
           </motion.div>
         ) : (
@@ -472,44 +473,47 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
             key="active"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-sm md:max-w-2xl glass p-6 md:p-16 rounded-[2.5rem] shadow-2xl relative overflow-hidden border-2 border-white/5"
+            className="w-full max-w-lg md:max-w-2xl glass p-8 md:p-16 rounded-[3rem] shadow-2xl relative overflow-hidden border border-white/10 flex flex-col items-center"
           >
-            <div className="absolute top-4 right-4 md:top-10 md:right-10 flex flex-col items-end gap-2">
-              <div className="bg-primary/20 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.4em] border border-primary/30">
-                Poll number {currentPoll.currentPollNumber}
+            <div className="flex flex-col items-center w-full gap-8 md:gap-12 text-center">
+              {/* Status Header */}
+              <div className="flex flex-col items-center">
+                <div className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] md:text-xs font-black text-primary tracking-[0.4em] uppercase mb-4">
+                  Poll number {currentPoll.currentPollNumber}
+                </div>
+                <div className="w-12 h-0.5 bg-primary/30 rounded-full mb-6" />
+                <div className="p-4 bg-primary/10 rounded-full border border-primary/20 glow-pink mb-4">
+                  <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-primary" />
+                </div>
+                <p className="text-pink-100/40 text-[10px] md:text-xs uppercase tracking-[0.5em] font-bold">Session Active</p>
               </div>
+
+              {/* Centered Timer */}
               {currentPoll.isActive && (
-                <div className="glass px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-primary/20 scale-90 md:scale-100">
+                <div className="glass px-6 py-4 md:px-10 md:py-6 rounded-[2rem] border border-primary/20 bg-white/5 backdrop-blur-md shadow-xl">
                   <CountdownTimer endsAt={currentPoll.endsAt} />
                 </div>
               )}
-            </div>
-            
-            <div className="flex flex-col items-center mb-8 md:mb-16 pt-8 md:pt-0">
-              <div className="w-10 h-1 bg-primary/30 rounded-full mb-4 md:mb-8" />
-              <div className="p-4 bg-primary/10 rounded-full border border-primary/20 mb-4 scale-75 md:scale-100">
-                <Sparkles className="w-8 h-8 text-primary glow-pink" />
+              
+              {/* Side-by-Side Buttons */}
+              <div className="flex flex-row w-full gap-3 md:gap-8 h-44 md:h-72">
+                <button 
+                  onClick={() => castVote('yes')}
+                  disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
+                  className="flex-1 group relative overflow-hidden bg-primary text-white rounded-[2rem] md:rounded-[3rem] text-2xl md:text-5xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(244,114,182,0.2)]"
+                >
+                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  YES
+                </button>
+                <button 
+                  onClick={() => castVote('no')}
+                  disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
+                  className="flex-1 group relative overflow-hidden bg-purple-950/40 border-2 border-white/5 text-primary rounded-[2rem] md:rounded-[3rem] text-2xl md:text-5xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  NO
+                </button>
               </div>
-              <p className="text-pink-100/40 text-[10px] uppercase tracking-[0.5em] font-bold">Session Active</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10 h-auto md:h-64">
-              <button 
-                onClick={() => castVote('yes')}
-                disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
-                className="group relative h-32 md:h-full overflow-hidden bg-primary text-white rounded-[1.5rem] md:rounded-[2.5rem] text-3xl md:text-5xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                Yes
-              </button>
-              <button 
-                onClick={() => castVote('no')}
-                disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
-                className="group relative h-32 md:h-full overflow-hidden bg-purple-900/40 border-2 border-primary/30 text-primary rounded-[1.5rem] md:rounded-[2.5rem] text-3xl md:text-5xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                No
-              </button>
             </div>
           </motion.div>
         )}
