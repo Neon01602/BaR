@@ -37,6 +37,9 @@ testConnection();
 export interface SystemState {
   currentPollNumber: number;
   isActive: boolean;
+  lastPushedAt?: any;
+  durationSeconds?: number;
+  endsAt?: any;
 }
 
 export interface Vote {

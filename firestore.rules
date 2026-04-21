@@ -16,7 +16,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == "ahmadabdullah007860@gmail.com" && isEmailVerified();
+      return isSignedIn() && request.auth.token.email == "ahmadabdullah007860@gmail.com";
     }
 
     function isValidId(id) {
@@ -43,8 +43,8 @@ service cloud.firestore {
                    incoming().currentPollNumber >= 0 && 
                    incoming().currentPollNumber <= 10 &&
                    incoming().isActive is bool &&
-                   incoming().keys().hasAll(['currentPollNumber', 'isActive']) &&
-                   incoming().keys().size() == 2;
+                   (incoming().keys().hasAll(['currentPollNumber', 'isActive'])) &&
+                   (incoming().keys().size() >= 2 && incoming().keys().size() <= 10);
     }
 
     // Votes rules

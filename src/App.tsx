@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth, googleProvider, ADMIN_EMAIL, db, SystemState, Vote } from './firebase';
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { doc, onSnapshot, collection, query, orderBy, setDoc, updateDoc, serverTimestamp, where } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, orderBy, setDoc, updateDoc, serverTimestamp, where, Timestamp } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, LogOut, Heart, Sparkles, Check, X, Users, RotateCcw, ChevronRight } from 'lucide-react';
 
@@ -46,9 +46,53 @@ const Auth = ({ user, loading }: { user: User | null, loading: boolean }) => {
   return null;
 };
 
+const CountdownTimer = ({ endsAt, onEnd }: { endsAt: any, onEnd?: () => void }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+  const [isFinished, setIsFinished] = useState(false);
+
+  useEffect(() => {
+    if (!endsAt) return;
+
+    const interval = setInterval(() => {
+      const target = endsAt.toDate ? endsAt.toDate().getTime() : endsAt;
+      const now = Date.now();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setTimeLeft('00:00');
+        setIsFinished(true);
+        clearInterval(interval);
+        if (onEnd) onEnd();
+        return;
+      }
+
+      const mins = Math.floor(diff / 60000).toString().padStart(2, '0');
+      const secs = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+      setTimeLeft(`${mins}:${secs}`);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [endsAt, onEnd]);
+
+  return (
+    <div className="flex flex-col items-center">
+      <span className={`serif text-3xl italic tracking-[0.2em] transition-colors duration-500 ${isFinished ? 'text-red-400' : 'text-primary active-glow'}`}>
+        {timeLeft}
+      </span>
+      <span className="text-[10px] uppercase opacity-40 font-bold tracking-[0.3em] mt-2">Remaining Clarity</span>
+    </div>
+  );
+};
+
 const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: Vote[] }) => {
   const [totalYes, setTotalYes] = useState(0);
   const [totalNo, setTotalNo] = useState(0);
+  const [duration, setDuration] = useState(60); // Default 60s
+  const [selectedPoll, setSelectedPoll] = useState(currentPoll.currentPollNumber);
+
+  useEffect(() => {
+    setSelectedPoll(currentPoll.currentPollNumber);
+  }, [currentPoll.currentPollNumber]);
 
   useEffect(() => {
     const activeVotes = votes.filter(v => v.pollNumber === currentPoll.currentPollNumber);
@@ -60,14 +104,27 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
     if (currentPoll.currentPollNumber >= 10 && currentPoll.isActive) return;
     
     const stateRef = doc(db, 'system', 'state');
-    if (!currentPoll.isActive && currentPoll.currentPollNumber > 0) {
-      // Just activate
-      await updateDoc(stateRef, { isActive: true });
+    const endsAt = Timestamp.fromMillis(Date.now() + duration * 1000);
+    
+    if (!currentPoll.isActive && currentPoll.currentPollNumber > 0 && currentPoll.currentPollNumber < 10) {
+      // Re-push/Next push if currently inactive but not reset
+      const nextNum = currentPoll.currentPollNumber + 1;
+      await updateDoc(stateRef, { 
+        currentPollNumber: nextNum,
+        isActive: true,
+        lastPushedAt: serverTimestamp(),
+        durationSeconds: duration,
+        endsAt
+      });
     } else {
-      // Increment and activate
+      // Initial or restart
+      const nextNum = currentPoll.currentPollNumber + 1;
       await setDoc(stateRef, {
-        currentPollNumber: currentPoll.currentPollNumber + 1,
-        isActive: true
+        currentPollNumber: nextNum > 10 ? 10 : nextNum,
+        isActive: true,
+        lastPushedAt: serverTimestamp(),
+        durationSeconds: duration,
+        endsAt
       });
     }
   };
@@ -122,23 +179,46 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
       <section className="col-span-12 lg:col-span-8 flex flex-col gap-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Master Controls */}
-          <div className="glass rounded-[2.5rem] p-10 flex flex-col justify-center items-center relative overflow-hidden h-[340px]">
+          <div className="glass rounded-[2.5rem] p-10 flex flex-col justify-center items-center relative overflow-hidden h-[420px]">
             <div className="absolute top-6 left-6 text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Master Controls</div>
-            <div className="text-center mb-8">
-              <p className="serif text-8xl italic text-primary mb-2 font-light tracking-tighter">
-                {currentPoll.currentPollNumber.toString().padStart(2, '0')}
+            <div className="text-center mb-6">
+              <p className="serif text-7xl italic text-primary mb-2 font-light tracking-tighter">
+                {currentPoll.isActive ? currentPoll.currentPollNumber.toString().padStart(2, '0') : (currentPoll.currentPollNumber + 1).toString().padStart(2, '0')}
               </p>
-              <p className="text-xs tracking-[0.5em] uppercase text-pink-200/40 font-bold">Current Phase</p>
+              <p className="text-xs tracking-[0.5em] uppercase text-pink-200/40 font-bold mb-4">
+                {currentPoll.isActive ? 'Active Phase' : 'Next Expected Phase'}
+              </p>
+              
+              {currentPoll.isActive && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <CountdownTimer endsAt={currentPoll.endsAt} onEnd={handleStop} />
+                </motion.div>
+              )}
             </div>
             
-            <div className="flex flex-col w-full gap-3">
+            <div className="flex flex-col w-full gap-4">
+              {!currentPoll.isActive && (
+                <div className="flex flex-col gap-2 mb-2">
+                  <label className="text-[10px] uppercase tracking-widest text-pink-100/40 font-bold ml-1">Set Duration (seconds)</label>
+                  <input 
+                    type="number" 
+                    value={duration}
+                    onChange={(e) => setDuration(Number(e.target.value))}
+                    className="bg-white/5 border border-pink-900/30 rounded-xl px-4 py-2 text-pink-100 focus:outline-none focus:border-primary transition-colors text-center serif italic text-xl"
+                  />
+                </div>
+              )}
+
               {currentPoll.isActive ? (
                 <button 
                   onClick={handleStop}
                   className="w-full py-4 bg-red-400 text-purple-950 rounded-full font-bold uppercase tracking-widest hover:bg-red-500 transition-all shadow-lg flex items-center justify-center gap-2"
                 >
                   <X className="w-5 h-5" />
-                  Stop Current Poll
+                  Terminal Stop
                 </button>
               ) : (
                 <button 
@@ -147,7 +227,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
                   className="w-full py-4 bg-primary text-purple-950 rounded-full font-bold uppercase tracking-widest glow-pink hover:bg-pink-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Sparkles className="w-5 h-5" />
-                  {currentPoll.currentPollNumber === 0 ? 'Start First Poll' : 'Push Next Poll'}
+                  Initiate Push #{currentPoll.currentPollNumber + 1}
                 </button>
               )}
               <button 
@@ -202,10 +282,32 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
         </div>
 
         {/* Voter Details Breakdown */}
-        <div className="glass rounded-[2.5rem] p-8 flex flex-col relative overflow-hidden min-h-[400px]">
+        <div className="glass rounded-[2.5rem] p-8 flex flex-col relative overflow-hidden min-h-[500px]">
           <div className="absolute top-6 left-8 text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Voter Details Breakdown</div>
           
-          <div className="mt-12 overflow-y-auto scroll-hide flex-1">
+          <div className="mt-12 flex flex-wrap gap-2 mb-6 border-b border-pink-900/20 pb-4">
+            {[...Array(10)].map((_, i) => {
+              const num = i + 1;
+              const hasVotes = votes.some(v => v.pollNumber === num);
+              return (
+                <button
+                  key={num}
+                  onClick={() => setSelectedPoll(num)}
+                  className={`w-10 h-10 rounded-full text-xs font-bold transition-all border ${
+                    selectedPoll === num 
+                      ? 'bg-primary text-purple-900 border-primary' 
+                      : hasVotes 
+                        ? 'bg-pink-900/20 text-pink-100 border-pink-900/30' 
+                        : 'bg-transparent text-pink-100/10 border-white/5'
+                  }`}
+                >
+                  {num}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="overflow-y-auto scroll-hide flex-1">
             <table className="w-full text-left">
               <thead className="text-[10px] uppercase tracking-[0.25em] text-pink-100/40 border-b border-pink-900/30">
                 <tr>
@@ -215,7 +317,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
                 </tr>
               </thead>
               <tbody className="text-sm divide-y divide-pink-900/10">
-                {votes.filter(v => v.pollNumber === currentPoll.currentPollNumber).map((v, idx) => (
+                {votes.filter(v => v.pollNumber === selectedPoll).map((v, idx) => (
                   <tr key={idx} className="group hover:bg-white/5 transition-colors">
                     <td className="py-4 pr-4">
                       <div className="flex flex-col">
@@ -231,10 +333,10 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
                     </td>
                   </tr>
                 ))}
-                {votes.filter(v => v.pollNumber === currentPoll.currentPollNumber).length === 0 && (
+                {votes.filter(v => v.pollNumber === selectedPoll).length === 0 && (
                   <tr>
                     <td colSpan={3} className="py-12 text-center text-pink-100/20 italic font-light serif text-xl">
-                      Awaiting the first breath of data...
+                      Awaiting the first breath of data for Poll {selectedPoll}...
                     </td>
                   </tr>
                 )}
@@ -249,13 +351,30 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
 
 const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: SystemState, userVote: Vote | null }) => {
   const [casting, setCasting] = useState(false);
+  const [isTimedOut, setIsTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!currentPoll.endsAt) return;
+    
+    const interval = setInterval(() => {
+      const target = currentPoll.endsAt.toDate ? currentPoll.endsAt.toDate().getTime() : currentPoll.endsAt;
+      if (Date.now() > target) {
+        setIsTimedOut(true);
+        clearInterval(interval);
+      } else {
+        setIsTimedOut(false);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentPoll.endsAt]);
 
   const castVote = async (choice: 'yes' | 'no') => {
-    if (casting || userVote) return;
+    if (casting || userVote || isTimedOut || !currentPoll.isActive) return;
     setCasting(true);
     try {
       const voteId = `${currentPoll.currentPollNumber}_${user.uid}`;
-      await setDoc(doc(db, 'votes', voteId), {
+      await setDoc(doc(doc(db, 'votes', voteId).parent, voteId), {
         pollNumber: currentPoll.currentPollNumber,
         userId: user.uid,
         userEmail: user.email,
@@ -270,10 +389,12 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
     }
   };
 
+  const showWaitingRoom = !currentPoll.isActive || isTimedOut;
+
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 py-10">
       <AnimatePresence mode="wait">
-        {!currentPoll.isActive ? (
+        {showWaitingRoom ? (
           <motion.div 
             key="inactive"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -284,9 +405,13 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
             <div className="mb-8 p-6 bg-primary/10 rounded-full inline-block glow-pink border border-primary/20">
               <Sparkles className="w-12 h-12 md:w-16 md:h-16 text-primary" />
             </div>
-            <h2 className="serif text-4xl md:text-5xl mb-6 text-pink-100 italic">The stage is being set...</h2>
+            <h2 className="serif text-4xl md:text-5xl mb-6 text-pink-100 italic">
+              {isTimedOut ? 'Clarity has passed.' : 'The stage is being set...'}
+            </h2>
             <p className="text-pink-100/40 font-light text-base md:text-lg tracking-wide">
-              Please preserve your anticipation. The next revelation is being prepared for you.
+              {isTimedOut 
+                ? 'This session has reached its natural conclusion. Please await the next revelation.' 
+                : 'Please preserve your anticipation. The next revelation is being prepared for you.'}
             </p>
           </motion.div>
         ) : userVote ? (
@@ -318,10 +443,15 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
             animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-2xl glass p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] shadow-2xl relative overflow-hidden border-2 border-white/5"
           >
-            <div className="absolute top-6 right-6 md:top-10 md:right-10">
+            <div className="absolute top-6 right-6 md:top-10 md:right-10 flex flex-col items-end gap-2">
               <div className="bg-primary/20 text-primary px-3 py-1 md:px-5 md:py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.4em] border border-primary/30">
                 Session {currentPoll.currentPollNumber.toString().padStart(2, '0')}
               </div>
+              {currentPoll.isActive && (
+                <div className="glass px-3 py-1 rounded-full border border-primary/20">
+                  <CountdownTimer endsAt={currentPoll.endsAt} />
+                </div>
+              )}
             </div>
             
             <div className="flex flex-col items-center mb-10 md:mb-16">
