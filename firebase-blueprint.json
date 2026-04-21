@@ -2,17 +2,20 @@
   "entities": {
     "SystemState": {
       "title": "System State",
-      "description": "Global state for the polling sequence",
+      "description": "Global state for the polling system",
       "type": "object",
       "properties": {
-        "currentPollNumber": { "type": "number", "description": "Sequence number of the current poll (1-10)" },
-        "isActive": { "type": "boolean", "description": "Whether the current poll is visible to users" }
+        "currentPollNumber": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "durationSeconds": { "type": "number" },
+        "endsAt": { "type": "object", "format": "google-firestore-timestamp" },
+        "lastPushedAt": { "type": "object", "format": "google-firestore-timestamp" }
       },
       "required": ["currentPollNumber", "isActive"]
     },
     "Vote": {
       "title": "Vote",
-      "description": "A vote cast by a user on a specific poll",
+      "description": "A single vote cast by a user",
       "type": "object",
       "properties": {
         "pollNumber": { "type": "number" },
@@ -20,7 +23,7 @@
         "userEmail": { "type": "string" },
         "userName": { "type": "string" },
         "choice": { "type": "string", "enum": ["yes", "no"] },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "timestamp": { "type": "object", "format": "google-firestore-timestamp" }
       },
       "required": ["pollNumber", "userId", "userEmail", "userName", "choice", "timestamp"]
     }
@@ -28,11 +31,11 @@
   "firestore": {
     "/system/state": {
       "schema": "SystemState",
-      "description": "The current globally active poll state"
+      "description": "Singleton document for system state"
     },
     "/votes/{voteId}": {
       "schema": "Vote",
-      "description": "Individual votes tracked by poll number and user"
+      "description": "Collection of votes, indexed by pollNumber_userId"
     }
   }
 }
