@@ -69,7 +69,7 @@ service cloud.firestore {
       // Admin can get any vote, users can get their own
       allow get: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
 
-      allow create: if isSignedIn() && isEmailVerified() && isValidVote(incoming()) && 
+      allow create: if isSignedIn() && isValidVote(incoming()) && 
                     incoming().pollNumber == getSystemState().currentPollNumber &&
                     getSystemState().isActive == true &&
                     // Enforce one vote per user per poll via document ID: pollNumber_userId

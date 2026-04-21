@@ -88,10 +88,13 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
   const [totalYes, setTotalYes] = useState(0);
   const [totalNo, setTotalNo] = useState(0);
   const [duration, setDuration] = useState(60); // Default 60s
-  const [selectedPoll, setSelectedPoll] = useState(currentPoll.currentPollNumber);
+  const [selectedPoll, setSelectedPoll] = useState(currentPoll.currentPollNumber || 1);
 
   useEffect(() => {
-    setSelectedPoll(currentPoll.currentPollNumber);
+    // Only auto-snap if the admin hasn't manually diverged significantly or if it's the first load
+    if (currentPoll.currentPollNumber > 0) {
+      setSelectedPoll(currentPoll.currentPollNumber);
+    }
   }, [currentPoll.currentPollNumber]);
 
   useEffect(() => {
@@ -374,7 +377,7 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
     setCasting(true);
     try {
       const voteId = `${currentPoll.currentPollNumber}_${user.uid}`;
-      await setDoc(doc(doc(db, 'votes', voteId).parent, voteId), {
+      await setDoc(doc(db, 'votes', voteId), {
         pollNumber: currentPoll.currentPollNumber,
         userId: user.uid,
         userEmail: user.email,
@@ -516,33 +519,40 @@ export default function App() {
       return;
     }
 
+    // Listener for system state
     const unsubState = onSnapshot(doc(db, 'system', 'state'), (s) => {
       if (s.exists()) {
         setSystemState(s.data() as SystemState);
       }
     });
 
+    return () => unsubState();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
     const isAdmin = user.email === ADMIN_EMAIL;
-    let votesQuery;
-    if (isAdmin) {
-      votesQuery = query(collection(db, 'votes'), orderBy('timestamp', 'desc'));
-    } else {
-      votesQuery = query(collection(db, 'votes'), where('userId', '==', user.uid));
-    }
+    const votesQuery = isAdmin 
+      ? query(collection(db, 'votes'), orderBy('timestamp', 'desc'))
+      : query(collection(db, 'votes'), where('userId', '==', user.uid));
 
     const unsubVotes = onSnapshot(votesQuery, (snap) => {
       const vData = snap.docs.map(d => d.data() as Vote);
       setVotes(vData);
-      
-      const currentVote = vData.find(v => v.pollNumber === systemState.currentPollNumber);
-      setUserVote(currentVote || null);
     });
 
-    return () => {
-      unsubState();
-      unsubVotes();
-    };
-  }, [user, systemState.currentPollNumber]);
+    return () => unsubVotes();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || votes.length === 0) {
+      setUserVote(null);
+      return;
+    }
+    const currentVote = votes.find(v => v.pollNumber === systemState.currentPollNumber);
+    setUserVote(currentVote || null);
+  }, [votes, systemState.currentPollNumber, user]);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
