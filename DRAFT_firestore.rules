@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == "ahmadabdullah007860@gmail.com" && isEmailVerified();
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function getSystemState() {
+      return get(/databases/$(database)/documents/system/state).data;
+    }
+
+    // System state rules
+    match /system/state {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && 
+                   incoming().currentPollNumber is number && 
+                   incoming().currentPollNumber >= 0 && 
+                   incoming().currentPollNumber <= 10 &&
+                   incoming().isActive is bool &&
+                   incoming().keys().hasAll(['currentPollNumber', 'isActive']) &&
+                   incoming().keys().size() == 2;
+    }
+
+    // Votes rules
+    match /votes/{voteId} {
+      function isValidVote(data) {
+        return data.pollNumber is number &&
+               data.pollNumber >= 1 &&
+               data.pollNumber <= 10 &&
+               data.userId == request.auth.uid &&
+               data.userEmail == request.auth.token.email &&
+               data.userName is string &&
+               data.userName.size() <= 200 &&
+               data.choice in ['yes', 'no'] &&
+               data.timestamp == request.time &&
+               data.keys().hasAll(['pollNumber', 'userId', 'userEmail', 'userName', 'choice', 'timestamp']) &&
+               data.keys().size() == 6;
+      }
+
+      // Users can list only their OWN votes unless they are admin
+      allow list: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      
+      // Admin can get any vote, users can get their own
+      allow get: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+
+      allow create: if isSignedIn() && isEmailVerified() && isValidVote(incoming()) && 
+                    incoming().pollNumber == getSystemState().currentPollNumber &&
+                    getSystemState().isActive == true &&
+                    // Enforce one vote per user per poll via document ID: pollNumber_userId
+                    voteId == incoming().pollNumber.toString() + "_" + request.auth.uid;
+
+      // Votes are immutable
+      allow update, delete: if false;
+    }
+  }
+}
