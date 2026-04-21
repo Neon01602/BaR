@@ -202,7 +202,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
           <div className="glass rounded-[2.5rem] p-10 flex flex-col justify-center items-center relative overflow-hidden h-[420px]">
             <div className="absolute top-6 left-6 text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Master Controls</div>
             <div className="text-center mb-6">
-              <p className="text-7xl text-primary mb-2 font-bold tracking-tighter">
+              <p className="text-6xl text-primary mb-2 font-bold tracking-tighter">
                 {currentPoll.isActive ? currentPoll.currentPollNumber.toString().padStart(2, '0') : (currentPoll.currentPollNumber + 1).toString().padStart(2, '0')}
               </p>
               <p className="text-xs tracking-[0.5em] uppercase text-pink-200/40 font-bold mb-4">
@@ -235,7 +235,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
               {currentPoll.isActive ? (
                 <button 
                   onClick={handleStop}
-                  className="w-full py-4 bg-red-400 text-purple-950 rounded-full font-bold uppercase tracking-widest hover:bg-red-500 transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-red-400 text-white rounded-full font-bold uppercase tracking-widest hover:bg-red-500 transition-all shadow-lg flex items-center justify-center gap-2"
                 >
                   <X className="w-5 h-5" />
                   Terminal Stop
@@ -244,7 +244,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
                 <button 
                   onClick={handlePush}
                   disabled={currentPoll.currentPollNumber >= 10}
-                  className="w-full py-4 bg-primary text-purple-950 rounded-full font-bold uppercase tracking-widest glow-pink hover:bg-pink-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-4 bg-primary text-white rounded-full font-bold uppercase tracking-widest glow-pink hover:bg-pink-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Sparkles className="w-5 h-5" />
                   Initiate Push #{currentPoll.currentPollNumber + 1}
@@ -272,7 +272,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
             <div className="flex flex-col gap-6 mt-8">
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-end">
-                  <span className="text-4xl text-pink-100 font-bold tracking-tight">{yesInSelected}</span>
+                  <span className="text-3xl text-pink-100 font-bold tracking-tight">{yesInSelected}</span>
                   <span className="text-[10px] uppercase opacity-40 tracking-widest font-bold">Yes Affirmations ({totalInSelected > 0 ? Math.round((yesInSelected / totalInSelected) * 100) : 0}%)</span>
                 </div>
                 <div className="w-full h-[6px] bg-pink-900/40 rounded-full overflow-hidden">
@@ -286,7 +286,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
 
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-end">
-                  <span className="text-4xl text-purple-200 font-bold tracking-tight">{noInSelected}</span>
+                  <span className="text-3xl text-purple-200 font-bold tracking-tight">{noInSelected}</span>
                   <span className="text-[10px] uppercase opacity-40 tracking-widest font-bold">No Negations ({totalInSelected > 0 ? Math.round((noInSelected / totalInSelected) * 100) : 0}%)</span>
                 </div>
                 <div className="w-full h-[6px] bg-pink-900/40 rounded-full overflow-hidden">
@@ -301,7 +301,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
             
             <div className="text-center">
               <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/40 block mb-1">Total Voices Collected</span>
-              <span className="text-2xl font-bold text-pink-100/80 tracking-tight">{totalInSelected} Responses</span>
+              <span className="text-xl font-bold text-pink-100/80 tracking-tight">{totalInSelected} Responses</span>
             </div>
           </div>
         </div>
@@ -320,7 +320,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
                   onClick={() => setSelectedPoll(num)}
                   className={`w-10 h-10 rounded-full text-xs font-bold transition-all border ${
                     selectedPoll === num 
-                      ? 'bg-primary text-purple-900 border-primary' 
+                      ? 'bg-primary text-white border-primary' 
                       : hasVotes 
                         ? 'bg-pink-900/20 text-pink-100 border-pink-900/30' 
                         : 'bg-transparent text-pink-100/10 border-white/5'
@@ -432,10 +432,10 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
             <div className="mb-6 p-4 bg-primary/10 rounded-full inline-block glow-pink border border-primary/20">
               <Sparkles className="w-10 h-10 text-primary" />
             </div>
-            <h2 className="text-3xl md:text-5xl mb-4 text-pink-100 font-bold tracking-tight">
-              {isTimedOut ? 'Session Closed' : 'Preparing Stage'}
-            </h2>
-            <p className="text-pink-100/40 font-light text-sm md:text-lg tracking-wide uppercase">
+            <p className="text-pink-100/40 font-bold text-xs tracking-[0.4em] uppercase mb-4">
+              Poll number {currentPoll.currentPollNumber}
+            </p>
+            <p className="text-pink-100/60 font-light text-sm md:text-lg tracking-wide uppercase">
               {isTimedOut 
                 ? 'Please await the next revelation.' 
                 : 'The next session is being prepared.'}
@@ -451,13 +451,15 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 blur-[80px] rounded-full" />
             <div className="mb-6 flex justify-center">
               <div className="p-4 bg-primary/10 rounded-full glow-pink border border-primary/30">
-                <Check className="w-8 h-8 md:w-14 md:h-14 text-primary" />
+                <Check className="w-8 h-8 md:w-12 md:h-12 text-primary" />
               </div>
             </div>
-            <h2 className="text-2xl md:text-5xl mb-4 text-pink-100 font-bold tracking-tight">Voice <span className="font-light opacity-50">Immortalized</span></h2>
+            <p className="text-pink-100/60 font-bold text-xs tracking-[0.4em] uppercase mb-4">
+              Poll number {userVote.pollNumber}
+            </p>
             <div className="flex flex-col items-center gap-2">
-              <p className="text-pink-100/30 font-bold uppercase tracking-[0.4em] text-[10px]">Record</p>
-              <span className={`text-6xl md:text-8xl font-black active-glow tracking-tighter ${userVote.choice === 'yes' ? 'text-primary' : 'text-purple-300'}`}>
+              <p className="text-pink-100/30 font-bold uppercase tracking-[0.4em] text-[10px]">Your Response</p>
+              <span className={`text-5xl md:text-7xl font-black active-glow tracking-tighter ${userVote.choice === 'yes' ? 'text-primary' : 'text-purple-300'}`}>
                 {userVote.choice.toUpperCase()}
               </span>
             </div>
@@ -470,11 +472,11 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
             key="active"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-md md:max-w-2xl glass p-6 md:p-16 rounded-[2.5rem] shadow-2xl relative overflow-hidden border-2 border-white/5"
+            className="w-full max-w-sm md:max-w-2xl glass p-6 md:p-16 rounded-[2.5rem] shadow-2xl relative overflow-hidden border-2 border-white/5"
           >
             <div className="absolute top-4 right-4 md:top-10 md:right-10 flex flex-col items-end gap-2">
               <div className="bg-primary/20 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.4em] border border-primary/30">
-                Poll {currentPoll.currentPollNumber.toString().padStart(2, '0')}
+                Poll number {currentPoll.currentPollNumber}
               </div>
               {currentPoll.isActive && (
                 <div className="glass px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-primary/20 scale-90 md:scale-100">
@@ -488,14 +490,14 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
               <div className="p-4 bg-primary/10 rounded-full border border-primary/20 mb-4 scale-75 md:scale-100">
                 <Sparkles className="w-8 h-8 text-primary glow-pink" />
               </div>
-              <p className="text-pink-100/40 text-[10px] uppercase tracking-[0.5em] font-bold">Awaiting Judgment</p>
+              <p className="text-pink-100/40 text-[10px] uppercase tracking-[0.5em] font-bold">Session Active</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10 h-auto md:h-64">
               <button 
                 onClick={() => castVote('yes')}
                 disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
-                className="group relative h-32 md:h-full overflow-hidden bg-primary text-purple-950 rounded-[1.5rem] md:rounded-[2.5rem] text-4xl md:text-6xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                className="group relative h-32 md:h-full overflow-hidden bg-primary text-white rounded-[1.5rem] md:rounded-[2.5rem] text-3xl md:text-5xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                 Yes
@@ -503,7 +505,7 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
               <button 
                 onClick={() => castVote('no')}
                 disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
-                className="group relative h-32 md:h-full overflow-hidden bg-purple-900/40 border-2 border-primary/30 text-primary rounded-[1.5rem] md:rounded-[2.5rem] text-4xl md:text-6xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                className="group relative h-32 md:h-full overflow-hidden bg-purple-900/40 border-2 border-primary/30 text-primary rounded-[1.5rem] md:rounded-[2.5rem] text-3xl md:text-5xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                 No
