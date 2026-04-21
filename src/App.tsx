@@ -419,7 +419,7 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
   const showWaitingRoom = !currentPoll.isActive || isTimedOut;
 
   return (
-    <div className="min-h-[85vh] flex flex-col items-center justify-center text-center px-4 py-6 md:py-10">
+    <div className="min-h-[60vh] flex flex-col items-center justify-start text-center px-4 py-8 md:py-12">
       <AnimatePresence mode="wait">
         {showWaitingRoom ? (
           <motion.div 
@@ -618,33 +618,33 @@ export default function App() {
       <Auth user={user} loading={loading} />
       
       {user && (
-        <div className="max-w-7xl mx-auto p-4 md:p-12 lg:p-16">
-          <header className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-pink-900/50 pb-10 mb-16 gap-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8">
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-pink-900/50 pb-6 mb-8 md:mb-12 gap-6">
             <div className="flex flex-col">
-              <span className="text-primary text-[10px] tracking-[0.5em] font-bold uppercase mb-2 opacity-70">
+              <span className="text-primary text-[10px] tracking-[0.5em] font-bold uppercase mb-1 opacity-70">
                 {isAdmin ? 'Administrative Suite' : 'Community Voice'}
               </span>
-              <div className="flex items-center gap-4">
-                <Sparkles className="w-10 h-10 text-primary glow-pink" />
-                <h1 className="text-6xl md:text-7xl font-bold text-pink-100 tracking-tighter leading-none">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-8 h-8 text-primary glow-pink" />
+                <h1 className="text-3xl md:text-5xl font-bold text-pink-100 tracking-tighter leading-none">
                   Bias <span className="font-light opacity-50">&</span> Reality
                 </h1>
               </div>
             </div>
             
-            <div className="flex items-center gap-6 text-left md:text-right bg-white/5 p-4 rounded-3xl border border-white/5 backdrop-blur-sm">
+            <div className="flex items-center gap-4 text-left md:text-right bg-white/5 p-3 rounded-2xl border border-white/5 backdrop-blur-sm">
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-pink-300/40 font-bold mb-1">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-pink-300/40 font-bold">
                   Secure Session
                 </span>
-                <span className="text-sm font-semibold text-pink-50">{user.displayName || user.email}</span>
+                <span className="text-xs font-semibold text-pink-50">{user.displayName || user.email}</span>
               </div>
               <button 
                 onClick={() => signOut(auth)}
-                className="w-12 h-12 rounded-full glass flex items-center justify-center text-primary hover:bg-primary hover:text-purple-950 transition-all border-primary/30"
+                className="w-10 h-10 rounded-full glass flex items-center justify-center text-primary hover:bg-primary hover:text-purple-950 transition-all border-primary/30"
                 title="Terminate Session"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           </header>
@@ -673,14 +673,14 @@ export default function App() {
             </AnimatePresence>
           </main>
           
-          <footer className="mt-32 py-16 border-t border-pink-900/20 text-center flex flex-col items-center gap-6">
+          <footer className="mt-20 py-12 border-t border-pink-900/20 text-center flex flex-col items-center gap-6">
             <div className="flex items-center gap-4">
               <div className="h-[1px] w-20 bg-pink-900/40" />
               <Heart className="w-4 h-4 text-primary opacity-40" />
               <div className="h-[1px] w-20 bg-pink-900/40" />
             </div>
             <p className="text-pink-100/20 text-[10px] font-bold uppercase tracking-[0.6em]">
-              The Rose Quartz Collective &bull; Immortalizing Voice Since 2026
+              Bias & Reality Syndicate &bull; Immortalizing Voice Since 2026
             </p>
           </footer>
         </div>
