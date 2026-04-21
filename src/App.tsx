@@ -98,10 +98,10 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
   }, [currentPoll.currentPollNumber]);
 
   useEffect(() => {
-    const activeVotes = votes.filter(v => v.pollNumber === currentPoll.currentPollNumber);
+    const activeVotes = votes.filter(v => v.pollNumber === selectedPoll);
     setTotalYes(activeVotes.filter(v => v.choice === 'yes').length);
     setTotalNo(activeVotes.filter(v => v.choice === 'no').length);
-  }, [votes, currentPoll.currentPollNumber]);
+  }, [votes, selectedPoll]);
 
   const handlePush = async () => {
     if (currentPoll.currentPollNumber >= 10 && currentPoll.isActive) return;
@@ -245,7 +245,12 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
 
           {/* Real-time Metrics */}
           <div className="glass rounded-[2.5rem] p-10 flex flex-col justify-between relative h-[340px]">
-            <div className="absolute top-6 left-6 text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Real-time Metrics</div>
+            <div className="absolute top-6 left-6 flex items-center gap-3">
+              <span className="text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Real-time Metrics</span>
+              <div className="px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-[8px] font-bold text-primary tracking-widest uppercase">
+                Poll {selectedPoll.toString().padStart(2, '0')} {selectedPoll === currentPoll.currentPollNumber && currentPoll.isActive ? 'LIVE' : 'FINAL'}
+              </div>
+            </div>
             
             <div className="flex flex-col gap-6 mt-8">
               <div className="flex flex-col gap-3">
@@ -279,7 +284,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
             
             <div className="text-center">
               <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/40 block mb-1">Total Voices Collected</span>
-              <span className="serif text-2xl italic text-pink-100/80">{votes.filter(v => v.pollNumber === currentPoll.currentPollNumber).length} Responses</span>
+              <span className="serif text-2xl italic text-pink-100/80">{votes.filter(v => v.pollNumber === selectedPoll).length} Responses</span>
             </div>
           </div>
         </div>
@@ -466,16 +471,16 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10 h-auto md:h-60">
               <button 
                 onClick={() => castVote('yes')}
-                disabled={casting}
-                className="group relative h-28 md:h-full overflow-hidden bg-primary text-purple-950 rounded-[1.5rem] md:rounded-[2.5rem] serif text-3xl md:text-5xl italic font-bold glow-pink hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center disabled:opacity-50"
+                disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
+                className="group relative h-28 md:h-full overflow-hidden bg-primary text-purple-950 rounded-[1.5rem] md:rounded-[2.5rem] serif text-3xl md:text-5xl italic font-bold glow-pink hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                 Yes
               </button>
               <button 
                 onClick={() => castVote('no')}
-                disabled={casting}
-                className="group relative h-28 md:h-full overflow-hidden bg-purple-900/40 border-2 border-primary/30 text-primary rounded-[1.5rem] md:rounded-[2.5rem] serif text-3xl md:text-5xl italic font-bold hover:bg-purple-900/60 hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center disabled:opacity-50"
+                disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
+                className="group relative h-28 md:h-full overflow-hidden bg-purple-900/40 border-2 border-primary/30 text-primary rounded-[1.5rem] md:rounded-[2.5rem] serif text-3xl md:text-5xl italic font-bold hover:bg-purple-900/60 hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                 No
