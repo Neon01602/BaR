@@ -496,11 +496,11 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
               )}
               
               {/* Side-by-Side Buttons */}
-              <div className="flex flex-row w-full gap-3 md:gap-8 h-44 md:h-72">
+              <div className="flex flex-row w-full gap-3 md:gap-6 h-20 md:h-28">
                 <button 
                   onClick={() => castVote('yes')}
                   disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
-                  className="flex-1 group relative overflow-hidden bg-primary text-white rounded-[2rem] md:rounded-[3rem] text-2xl md:text-5xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(244,114,182,0.2)]"
+                  className="flex-1 group relative overflow-hidden bg-primary text-white rounded-2xl md:rounded-3xl text-xl md:text-3xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(244,114,182,0.15)]"
                 >
                   <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                   YES
@@ -508,7 +508,7 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
                 <button 
                   onClick={() => castVote('no')}
                   disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
-                  className="flex-1 group relative overflow-hidden bg-purple-950/40 border-2 border-white/5 text-primary rounded-[2rem] md:rounded-[3rem] text-2xl md:text-5xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex-1 group relative overflow-hidden bg-purple-950/40 border-2 border-white/10 text-primary rounded-2xl md:rounded-3xl text-xl md:text-3xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                   NO
