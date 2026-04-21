@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth, googleProvider, ADMIN_EMAIL, db, SystemState, Vote } from './firebase';
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { doc, onSnapshot, collection, query, orderBy, setDoc, updateDoc, serverTimestamp, where, Timestamp } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, orderBy, setDoc, updateDoc, serverTimestamp, where, Timestamp, writeBatch, getDocs, deleteDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, LogOut, Heart, Sparkles, Check, X, Users, RotateCcw, ChevronRight } from 'lucide-react';
 
@@ -138,8 +138,22 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
   };
 
   const handleReset = async () => {
+    if (!window.confirm("Are you certain you wish to wipe ALL session data and accumulated votes? This action is absolute.")) return;
+    
     const stateRef = doc(db, 'system', 'state');
     await setDoc(stateRef, { currentPollNumber: 0, isActive: false });
+
+    // Programmatically clear all votes (for small to medium sets)
+    try {
+      const votesSnap = await getDocs(collection(db, 'votes'));
+      const batch = writeBatch(db);
+      votesSnap.docs.forEach((d) => {
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+    } catch (err) {
+      console.error("Collection wipe failed:", err);
+    }
   };
 
   const pollVotes = (num: number) => votes.filter(v => v.pollNumber === num);

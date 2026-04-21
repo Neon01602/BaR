@@ -75,8 +75,9 @@ service cloud.firestore {
                     // Enforce one vote per user per poll via document ID: pollNumber_userId
                     voteId == (incoming().pollNumber.toString() + "_" + request.auth.uid);
 
-      // Votes are immutable
-      allow update, delete: if false;
+      // Votes are immutable for users, but admin can purge them for resets
+      allow update: if false;
+      allow delete: if isAdmin();
     }
   }
 }
