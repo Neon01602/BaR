@@ -87,8 +87,15 @@ const CountdownTimer = ({ endsAt, onEnd }: { endsAt: any, onEnd?: () => void }) 
 const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: Vote[] }) => {
   const [totalYes, setTotalYes] = useState(0);
   const [totalNo, setTotalNo] = useState(0);
-  const [duration, setDuration] = useState(60); // Default 60s
+  const [duration, setDuration] = useState(20); // Default 20s as requested
   const [selectedPoll, setSelectedPoll] = useState(currentPoll.currentPollNumber || 1);
+
+  useEffect(() => {
+    // Sync local duration with the system state if it changes externally
+    if (currentPoll.durationSeconds && currentPoll.isActive) {
+      setDuration(currentPoll.durationSeconds);
+    }
+  }, [currentPoll.durationSeconds, currentPoll.isActive]);
 
   useEffect(() => {
     // Only auto-snap if the admin hasn't manually diverged significantly or if it's the first load
