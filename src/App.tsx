@@ -3,7 +3,7 @@ import { auth, googleProvider, ADMIN_EMAIL, db, SystemState, Vote } from './fire
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, orderBy, setDoc, updateDoc, serverTimestamp, where, Timestamp, writeBatch, getDocs, deleteDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { LogIn, LogOut, Heart, Sparkles, Check, X, Users, RotateCcw, ChevronRight } from 'lucide-react';
+import { LogIn, LogOut, Heart, Sparkles, Check, X, Users, RotateCcw, ChevronRight, Shuffle } from 'lucide-react';
 
 // Components
 const Auth = ({ user, loading }: { user: User | null, loading: boolean }) => {
@@ -88,7 +88,19 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
   const [totalYes, setTotalYes] = useState(0);
   const [totalNo, setTotalNo] = useState(0);
   const [selectedPoll, setSelectedPoll] = useState(currentPoll.currentPollNumber || 1);
+  const [randomizedVoters, setRandomizedVoters] = useState<{ yes: Vote | null, no: Vote | null } | null>(null);
   const FIXED_DURATION = 20;
+
+  const handleRandomize = () => {
+    const pollVotes = votes.filter(v => v.pollNumber === selectedPoll);
+    const yesVoters = pollVotes.filter(v => v.choice === 'yes');
+    const noVoters = pollVotes.filter(v => v.choice === 'no');
+
+    const randomYes = yesVoters.length > 0 ? yesVoters[Math.floor(Math.random() * yesVoters.length)] : null;
+    const randomNo = noVoters.length > 0 ? noVoters[Math.floor(Math.random() * noVoters.length)] : null;
+
+    setRandomizedVoters({ yes: randomYes, no: randomNo });
+  };
 
   useEffect(() => {
     // Only auto-snap if the admin hasn't manually diverged significantly or if it's the first load
@@ -298,7 +310,54 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
         <div className="glass rounded-[2.5rem] p-8 flex flex-col relative overflow-hidden min-h-[500px]">
           <div className="absolute top-6 left-8 text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Voter Details Breakdown</div>
           
-          <div className="mt-12 flex flex-wrap gap-2 mb-6 border-b border-pink-900/20 pb-4">
+          <button 
+            onClick={handleRandomize}
+            className="absolute top-4 right-8 glass p-2 rounded-xl text-primary hover:bg-primary/20 transition-all border border-primary/30 flex items-center gap-2 group"
+          >
+            <Shuffle className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+            <span className="text-[10px] uppercase font-bold tracking-widest hidden md:inline">Randomize Spotlights</span>
+          </button>
+          
+          <AnimatePresence>
+            {randomizedVoters && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"
+              >
+                <div className="bg-primary/10 border border-primary/30 p-4 rounded-2xl relative overflow-hidden">
+                  <div className="absolute -right-4 -bottom-4 opacity-5 rotate-12">
+                    <Check className="w-24 h-24 text-primary" />
+                  </div>
+                  <span className="text-[8px] uppercase tracking-[0.3em] text-primary font-black mb-1 block">Highlight: Affirmation</span>
+                  {randomizedVoters.yes ? (
+                    <>
+                      <p className="text-pink-100 font-bold tracking-tight text-lg">{randomizedVoters.yes.userName}</p>
+                      <p className="text-[10px] text-pink-100/40 truncate">{randomizedVoters.yes.userEmail}</p>
+                    </>
+                  ) : (
+                    <p className="text-pink-100/20 italic text-xs">No affirmations recorded yet.</p>
+                  )}
+                </div>
+                <div className="bg-purple-900/20 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden">
+                  <div className="absolute -right-4 -bottom-4 opacity-5 rotate-12">
+                    <X className="w-24 h-24 text-purple-400" />
+                  </div>
+                  <span className="text-[8px] uppercase tracking-[0.3em] text-purple-400 font-black mb-1 block">Highlight: Negation</span>
+                  {randomizedVoters.no ? (
+                    <>
+                      <p className="text-pink-100 font-bold tracking-tight text-lg">{randomizedVoters.no.userName}</p>
+                      <p className="text-[10px] text-pink-100/40 truncate">{randomizedVoters.no.userEmail}</p>
+                    </>
+                  ) : (
+                    <p className="text-pink-100/20 italic text-xs">No negations recorded yet.</p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <div className={`${randomizedVoters ? 'mt-4' : 'mt-12'} flex flex-wrap gap-2 mb-6 border-b border-pink-900/20 pb-4`}>
             {[...Array(10)].map((_, i) => {
               const num = i + 1;
               const hasVotes = votes.some(v => v.pollNumber === num);
