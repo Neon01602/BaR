@@ -3,7 +3,7 @@ import { auth, googleProvider, ADMIN_EMAIL, db, SystemState, Vote } from './fire
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, orderBy, setDoc, updateDoc, serverTimestamp, where, Timestamp, writeBatch, getDocs, deleteDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { LogIn, LogOut, Heart, Sparkles, Check, X, Users, RotateCcw, ChevronRight, Shuffle } from 'lucide-react';
+import { LogIn, LogOut, Heart, Sparkles, Check, X, Users, RotateCcw, ChevronRight, Shuffle, LayoutDashboard, Zap, BarChart2, ShieldCheck, Menu, Settings } from 'lucide-react';
 
 const FIXED_DURATION = 20;
 
@@ -82,7 +82,7 @@ const Auth = ({ user, loading }: { user: User | null, loading: boolean }) => {
   return null;
 };
 
-const CountdownTimer = ({ endsAt, onEnd }: { endsAt: any, onEnd?: () => void }) => {
+const CountdownTimer = ({ endsAt, onEnd, offset = 0 }: { endsAt: any, onEnd?: () => void, offset?: number }) => {
   const [timeLeft, setTimeLeft] = useState('');
   const [isFinished, setIsFinished] = useState(false);
 
@@ -91,7 +91,7 @@ const CountdownTimer = ({ endsAt, onEnd }: { endsAt: any, onEnd?: () => void }) 
 
     const interval = setInterval(() => {
       const target = endsAt.toDate ? endsAt.toDate().getTime() : endsAt;
-      const now = Date.now();
+      const now = Date.now() + offset;
       const diff = target - now;
 
       if (diff <= 0) {
@@ -120,7 +120,9 @@ const CountdownTimer = ({ endsAt, onEnd }: { endsAt: any, onEnd?: () => void }) 
   );
 };
 
-const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: Vote[] }) => {
+const AdminPanel = ({ currentPoll, votes, clockOffset = 0 }: { currentPoll: SystemState, votes: Vote[], clockOffset?: number }) => {
+  const [activeSection, setActiveSection] = useState<'overview' | 'manager' | 'analytics' | 'voters'>('overview');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [totalYes, setTotalYes] = useState(0);
   const [totalNo, setTotalNo] = useState(0);
   const [selectedPoll, setSelectedPoll] = useState(currentPoll.currentPollNumber || 1);
@@ -138,7 +140,6 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
   };
 
   useEffect(() => {
-    // Only auto-snap if the admin hasn't manually diverged significantly or if it's the first load
     if (currentPoll.currentPollNumber > 0) {
       setSelectedPoll(currentPoll.currentPollNumber);
     }
@@ -152,12 +153,10 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
 
   const handlePush = async () => {
     if (currentPoll.currentPollNumber >= 10 && currentPoll.isActive) return;
-    
     const stateRef = doc(db, 'system', 'state');
-    const endsAt = Timestamp.fromMillis(Date.now() + FIXED_DURATION * 1000);
+    const endsAt = Timestamp.fromMillis(Date.now() + clockOffset + FIXED_DURATION * 1000);
     
     if (!currentPoll.isActive && currentPoll.currentPollNumber > 0 && currentPoll.currentPollNumber < 10) {
-      // Re-push/Next push if currently inactive but not reset
       const nextNum = currentPoll.currentPollNumber + 1;
       await updateDoc(stateRef, { 
         currentPollNumber: nextNum,
@@ -167,8 +166,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
         endsAt
       });
     } else {
-      // Initial or restart
-      const nextNum = currentPoll.currentPollNumber + 1;
+      const nextNum = (currentPoll.currentPollNumber || 0) + 1;
       await setDoc(stateRef, {
         currentPollNumber: nextNum > 10 ? 10 : nextNum,
         isActive: true,
@@ -186,17 +184,12 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
 
   const handleReset = async () => {
     if (!window.confirm("Are you certain you wish to wipe ALL session data and accumulated votes? This action is absolute.")) return;
-    
     const stateRef = doc(db, 'system', 'state');
     await setDoc(stateRef, { currentPollNumber: 0, isActive: false });
-
-    // Programmatically clear all votes (for small to medium sets)
     try {
       const votesSnap = await getDocs(collection(db, 'votes'));
       const batch = writeBatch(db);
-      votesSnap.docs.forEach((d) => {
-        batch.delete(d.ref);
-      });
+      votesSnap.docs.forEach((d) => batch.delete(d.ref));
       await batch.commit();
     } catch (err) {
       console.error("Collection wipe failed:", err);
@@ -208,255 +201,409 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
   const yesInSelected = pollVotes.filter(v => v.choice === 'yes').length;
   const noInSelected = pollVotes.filter(v => v.choice === 'no').length;
 
+  const sections = [
+    { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'manager', label: 'Poll Manager', icon: Zap },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
+    { id: 'voters', label: 'Auditor Room', icon: ShieldCheck },
+  ] as const;
+
   return (
-    <div className="grid grid-cols-12 gap-8 pb-20">
-      {/* Sidebar: Poll Sequence */}
-      <section className="col-span-12 lg:col-span-4 flex flex-col gap-6">
-        <div className="glass p-8 rounded-[2rem] h-full flex flex-col justify-between">
-          <div>
-            <h2 className="text-2xl font-bold mb-8 text-pink-200 tracking-tight">Poll Sequence</h2>
-            <div className="space-y-5">
-              {[...Array(10)].map((_, i) => {
-                const num = i + 1;
-                const isFinalized = num < currentPoll.currentPollNumber;
-                const isCurrent = num === currentPoll.currentPollNumber;
-                const isQueued = num > currentPoll.currentPollNumber;
-                const isHiding = num === currentPoll.currentPollNumber && !currentPoll.isActive;
-                
-                return (
-                  <div key={num} className={`flex items-center gap-4 group transition-opacity ${isQueued ? 'opacity-30' : 'opacity-100'}`}>
-                    <div className={`poll-dot ${isFinalized ? 'filled' : ''} ${isCurrent ? 'current' : ''}`} />
-                    <span className={`text-sm tracking-widest uppercase ${isCurrent ? 'text-primary font-bold active-glow' : 'text-pink-100/60 font-medium italic'}`}>
-                      Session {num.toString().padStart(2, '0')}: {isFinalized ? 'Finalized' : isCurrent ? (isHiding ? 'Hidden' : 'Active') : 'Queued'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="pt-6 border-t border-pink-900/30 mt-8">
-            <p className="text-[10px] text-primary uppercase tracking-[0.3em] font-bold opacity-70">
-              Platform Status: {(currentPoll.currentPollNumber * 10)}% Completion
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content Area */}
-      <section className="col-span-12 lg:col-span-8 flex flex-col gap-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Master Controls */}
-          <div className="glass rounded-[2.5rem] p-10 flex flex-col justify-center items-center relative overflow-hidden h-[420px]">
-            <div className="absolute top-6 left-6 text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Master Controls</div>
-            <div className="text-center mb-6">
-              <p className="text-6xl text-primary mb-2 font-bold tracking-tighter">
-                {currentPoll.isActive ? currentPoll.currentPollNumber.toString().padStart(2, '0') : (currentPoll.currentPollNumber + 1).toString().padStart(2, '0')}
-              </p>
-              <p className="text-xs tracking-[0.5em] uppercase text-pink-200/40 font-bold mb-4">
-                {currentPoll.isActive ? 'Active Phase' : 'Next Expected Phase'}
-              </p>
-              
-              {currentPoll.isActive && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <CountdownTimer endsAt={currentPoll.endsAt} onEnd={handleStop} />
-                </motion.div>
+    <div className="flex flex-col lg:flex-row gap-8 min-h-[700px] relative pb-20">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden lg:flex flex-col w-64 gap-2 sticky top-8 h-fit">
+        <div className="glass p-4 rounded-3xl flex flex-col gap-2">
+          <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-primary/40 px-4 mb-2">Navigation</p>
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all group ${
+                activeSection === section.id 
+                  ? 'bg-primary text-purple-950 shadow-lg glow-pink' 
+                  : 'text-pink-100/60 hover:bg-white/5 hover:text-pink-100'
+              }`}
+            >
+              <section.icon className={`w-5 h-5 ${activeSection === section.id ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'}`} />
+              <span className="font-bold tracking-tight">{section.label}</span>
+              {activeSection === section.id && (
+                <motion.div layoutId="active-pill" className="ml-auto w-1.5 h-1.5 bg-purple-950 rounded-full" />
               )}
-            </div>
-            
-            <div className="flex flex-col w-full gap-4">
-              {currentPoll.isActive ? (
-                <button 
-                  onClick={handleStop}
-                  className="w-full py-4 bg-red-400 text-white rounded-full font-bold uppercase tracking-widest hover:bg-red-500 transition-all shadow-lg flex items-center justify-center gap-2"
-                >
-                  <X className="w-5 h-5" />
-                  Terminal Stop
-                </button>
-              ) : (
-                <button 
-                  onClick={handlePush}
-                  disabled={currentPoll.currentPollNumber >= 10}
-                  className="w-full py-4 bg-primary text-white rounded-full font-bold uppercase tracking-widest glow-pink hover:bg-pink-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Initiate Push #{currentPoll.currentPollNumber + 1}
-                </button>
-              )}
-              <button 
-                onClick={handleReset}
-                className="py-2 text-pink-100/20 hover:text-red-400 transition-all text-[10px] uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-2"
-              >
-                <RotateCcw className="w-3 h-3" />
-                Emergency Reset
-              </button>
-            </div>
-          </div>
-
-          {/* Real-time Metrics */}
-          <div className="glass rounded-[2.5rem] p-10 flex flex-col justify-between relative h-[340px]">
-            <div className="absolute top-6 left-6 flex items-center gap-3">
-              <span className="text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Real-time Metrics</span>
-              <div className="px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-[8px] font-bold text-primary tracking-widest uppercase">
-                Poll {selectedPoll.toString().padStart(2, '0')} {selectedPoll === currentPoll.currentPollNumber && currentPoll.isActive ? 'LIVE' : 'FINAL'}
-              </div>
-            </div>
-            
-            <div className="flex flex-col gap-6 mt-8">
-              <div className="flex flex-col gap-3">
-                <div className="flex justify-between items-end">
-                  <span className="text-3xl text-pink-100 font-bold tracking-tight">{yesInSelected}</span>
-                  <span className="text-[10px] uppercase opacity-40 tracking-widest font-bold">Yes Affirmations ({totalInSelected > 0 ? Math.round((yesInSelected / totalInSelected) * 100) : 0}%)</span>
-                </div>
-                <div className="w-full h-[6px] bg-pink-900/40 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={false}
-                    animate={{ width: `${(yesInSelected / (totalInSelected || 1)) * 100}%` }}
-                    className="h-full bg-primary glow-pink"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <div className="flex justify-between items-end">
-                  <span className="text-3xl text-purple-200 font-bold tracking-tight">{noInSelected}</span>
-                  <span className="text-[10px] uppercase opacity-40 tracking-widest font-bold">No Negations ({totalInSelected > 0 ? Math.round((noInSelected / totalInSelected) * 100) : 0}%)</span>
-                </div>
-                <div className="w-full h-[6px] bg-pink-900/40 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={false}
-                    animate={{ width: `${(noInSelected / (totalInSelected || 1)) * 100}%` }}
-                    className="h-full bg-secondary"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="text-center">
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/40 block mb-1">Total Voices Collected</span>
-              <span className="text-xl font-bold text-pink-100/80 tracking-tight">{totalInSelected} Responses</span>
-            </div>
-          </div>
+            </button>
+          ))}
         </div>
 
-        {/* Voter Details Breakdown */}
-        <div className="glass rounded-[2.5rem] p-8 flex flex-col relative overflow-hidden min-h-[500px]">
-          <div className="absolute top-6 left-8 text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Voter Details Breakdown</div>
-          
-          <button 
-            onClick={handleRandomize}
-            className="absolute top-4 right-8 glass p-2 rounded-xl text-primary hover:bg-primary/20 transition-all border border-primary/30 flex items-center gap-2 group"
+        <div className="glass p-6 rounded-3xl mt-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-2 h-2 rounded-full ${currentPoll.isActive ? 'bg-primary animate-pulse' : 'bg-red-400'}`} />
+            <span className="text-[10px] uppercase font-black tracking-widest text-pink-100/50">System Link: {currentPoll.isActive ? 'Live' : 'Idle'}</span>
+          </div>
+          <p className="text-[10px] text-pink-100/30 leading-relaxed italic">
+            Architect session monitoring is active. All terminal actions are logged.
+          </p>
+        </div>
+      </aside>
+
+      {/* Mobile Nav Toggle */}
+      <div className="lg:hidden flex items-center justify-between glass p-4 rounded-2xl mb-2">
+        <div className="flex items-center gap-3">
+          <div className={`w-2 h-2 rounded-full ${currentPoll.isActive ? 'bg-primary animate-pulse' : 'bg-red-400'}`} />
+          <span className="text-xs font-bold uppercase tracking-widest text-pink-50">
+            {sections.find(s => s.id === activeSection)?.label}
+          </span>
+        </div>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 bg-white/5 rounded-xl text-primary"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Mobile Drawer */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, x: -100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            className="fixed inset-0 z-50 lg:hidden p-4 pointer-events-none"
           >
-            <Shuffle className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
-            <span className="text-[10px] uppercase font-bold tracking-widest hidden md:inline">Randomize Spotlights</span>
-          </button>
-          
-          <AnimatePresence>
-            {randomizedVoters && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"
-              >
-                <div className="bg-primary/10 border border-primary/30 p-4 rounded-2xl relative overflow-hidden">
-                  <div className="absolute -right-4 -bottom-4 opacity-5 rotate-12">
-                    <Check className="w-24 h-24 text-primary" />
-                  </div>
-                  <span className="text-[8px] uppercase tracking-[0.3em] text-primary font-black mb-1 block">Highlight: Affirmation</span>
-                  {randomizedVoters.yes ? (
-                    <>
-                      <p className="text-pink-100 font-bold tracking-tight text-lg">{randomizedVoters.yes.userName}</p>
-                      <p className="text-[10px] text-pink-100/40 truncate">{randomizedVoters.yes.userEmail}</p>
-                    </>
-                  ) : (
-                    <p className="text-pink-100/20 italic text-xs">No affirmations recorded yet.</p>
-                  )}
-                </div>
-                <div className="bg-purple-900/20 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden">
-                  <div className="absolute -right-4 -bottom-4 opacity-5 rotate-12">
-                    <X className="w-24 h-24 text-purple-400" />
-                  </div>
-                  <span className="text-[8px] uppercase tracking-[0.3em] text-purple-400 font-black mb-1 block">Highlight: Negation</span>
-                  {randomizedVoters.no ? (
-                    <>
-                      <p className="text-pink-100 font-bold tracking-tight text-lg">{randomizedVoters.no.userName}</p>
-                      <p className="text-[10px] text-pink-100/40 truncate">{randomizedVoters.no.userEmail}</p>
-                    </>
-                  ) : (
-                    <p className="text-pink-100/20 italic text-xs">No negations recorded yet.</p>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
-          <div className={`${randomizedVoters ? 'mt-4' : 'mt-12'} flex flex-wrap gap-2 mb-6 border-b border-pink-900/20 pb-4`}>
-            {[...Array(10)].map((_, i) => {
-              const num = i + 1;
-              const hasVotes = votes.some(v => v.pollNumber === num);
-              return (
+            <div 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto" 
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            <div className="relative w-72 h-full glass p-6 rounded-3xl flex flex-col gap-2 pointer-events-auto shadow-2xl border-r border-white/10">
+              <div className="flex justify-between items-center mb-8 px-2">
+                <span className="text-xl font-black text-primary tracking-tighter">Architect Menu</span>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-pink-100/40"><X className="w-5 h-5"/></button>
+              </div>
+              {sections.map((section) => (
                 <button
-                  key={num}
-                  onClick={() => setSelectedPoll(num)}
-                  className={`w-10 h-10 rounded-full text-xs font-bold transition-all border ${
-                    selectedPoll === num 
-                      ? 'bg-primary text-white border-primary' 
-                      : hasVotes 
-                        ? 'bg-pink-900/20 text-pink-100 border-pink-900/30' 
-                        : 'bg-transparent text-pink-100/10 border-white/5'
+                  key={section.id}
+                  onClick={() => {
+                    setActiveSection(section.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
+                    activeSection === section.id 
+                      ? 'bg-primary text-purple-950 glow-pink' 
+                      : 'text-pink-100/60 hover:bg-white/5'
                   }`}
                 >
-                  {num}
+                  <section.icon className="w-5 h-5" />
+                  <span className="font-bold tracking-tight">{section.label}</span>
                 </button>
-              );
-            })}
-          </div>
+              ))}
+              <div className="mt-auto pt-6 border-t border-white/5 opacity-40">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-center">Bias & Reality Admin v1.2</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          <div className="overflow-y-auto scroll-hide flex-1">
-            <table className="w-full text-left">
-              <thead className="text-[10px] uppercase tracking-[0.25em] text-pink-100/40 border-b border-pink-900/30">
-                <tr>
-                  <th className="pb-4 font-bold">Voter Identity</th>
-                  <th className="pb-4 font-bold text-center">Context</th>
-                  <th className="pb-4 font-bold text-right">Judgment</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm divide-y divide-pink-900/10">
-                {votes.filter(v => v.pollNumber === selectedPoll).map((v, idx) => (
-                  <tr key={idx} className="group hover:bg-white/5 transition-colors">
-                    <td className="py-4 pr-4">
-                      <div className="flex flex-col">
-                        <span className="text-lg text-pink-200 font-bold leading-none mb-1">{v.userName}</span>
-                        <span className="text-[10px] opacity-30 font-medium tracking-tight uppercase tracking-[0.1em]">{v.userEmail}</span>
+      {/* Content Area */}
+      <main className="flex-1 min-w-0">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeSection}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+          >
+            {activeSection === 'overview' && (
+              <div className="flex flex-col gap-6">
+                <div className="glass p-8 rounded-[2.5rem]">
+                  <h2 className="text-3xl font-bold mb-8 text-pink-50 tracking-tight flex items-center gap-3">
+                    <LayoutDashboard className="w-8 h-8 text-primary" />
+                    Poll Sequence Summary
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(10)].map((_, i) => {
+                      const num = i + 1;
+                      const isFinalized = num < currentPoll.currentPollNumber;
+                      const isCurrent = num === currentPoll.currentPollNumber;
+                      const isQueued = num > currentPoll.currentPollNumber;
+                      const isHiding = num === currentPoll.currentPollNumber && !currentPoll.isActive;
+                      
+                      return (
+                        <div key={num} className={`p-6 rounded-3xl border transition-all ${
+                          isCurrent ? 'bg-primary/5 border-primary shadow-[0_0_20px_rgba(255,160,200,0.1)]' : 'bg-white/2 border-white/5'
+                        }`}>
+                          <div className="flex justify-between items-start mb-4">
+                            <span className={`text-2xl font-black ${isQueued ? 'opacity-20' : 'text-primary'}`}>
+                              {num.toString().padStart(2, '0')}
+                            </span>
+                            <div className={`poll-dot ${isFinalized ? 'filled' : ''} ${isCurrent ? 'current' : ''}`} />
+                          </div>
+                          <p className={`text-[10px] uppercase tracking-[0.2em] font-bold ${isCurrent ? 'text-primary' : 'text-white/30'}`}>
+                            {isFinalized ? 'Finalized' : isCurrent ? (isHiding ? 'Standby' : 'Active') : 'Scheduled'}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'manager' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="glass rounded-[2.5rem] p-12 flex flex-col justify-center items-center relative overflow-hidden min-h-[450px]">
+                  <div className="absolute top-8 left-8 text-[10px] uppercase tracking-[0.4em] text-primary font-bold opacity-70">Control Nexus</div>
+                  <div className="text-center mb-8">
+                    <p className="text-8xl text-primary mb-4 font-black tracking-tighter">
+                      {currentPoll.isActive ? currentPoll.currentPollNumber.toString().padStart(2, '0') : (currentPoll.currentPollNumber + 1).toString().padStart(2, '0')}
+                    </p>
+                    <p className="text-xs tracking-[0.6em] uppercase text-pink-200/40 font-bold mb-6">
+                      {currentPoll.isActive ? 'Pulse Phase' : 'Next Cycle'}
+                    </p>
+                    {currentPoll.isActive && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="p-6 bg-white/5 rounded-3xl border border-white/5"
+                      >
+                        <CountdownTimer endsAt={currentPoll.endsAt} onEnd={handleStop} offset={clockOffset} />
+                      </motion.div>
+                    )}
+                  </div>
+                  <div className="flex flex-col w-full gap-4 max-w-sm">
+                    {currentPoll.isActive ? (
+                      <button 
+                        onClick={handleStop}
+                        className="w-full py-5 bg-red-500/80 text-white rounded-full font-bold uppercase tracking-widest hover:bg-red-500 transition-all flex items-center justify-center gap-3 group"
+                      >
+                        <X className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        Terminal Cease
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={handlePush}
+                        disabled={currentPoll.currentPollNumber >= 10}
+                        className="w-full py-5 bg-primary text-purple-950 rounded-full font-bold uppercase tracking-widest glow-pink hover:bg-pink-300 transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:grayscale group"
+                      >
+                        <Zap className="w-5 h-5 group-hover:animate-bounce" />
+                        Initiate Push {currentPoll.currentPollNumber + 1}
+                      </button>
+                    )}
+                    <button 
+                      onClick={handleReset}
+                      className="py-3 text-pink-100/20 hover:text-red-400 transition-all text-[10px] uppercase tracking-[0.3em] font-bold flex items-center justify-center gap-2 group"
+                    >
+                      <RotateCcw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-700" />
+                      Emergency Reset All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="glass p-12 rounded-[2.5rem] flex flex-col justify-center">
+                  <h3 className="text-xl font-bold text-pink-100 mb-6 flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-primary" />
+                    Protocol Instructions
+                  </h3>
+                  <div className="space-y-6">
+                    <div className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">1</div>
+                      <p className="text-sm text-pink-100/60 leading-relaxed">Ensure all screens are synced before initiating a push. Each push lasts exactly 20 seconds.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">2</div>
+                      <p className="text-sm text-pink-100/60 leading-relaxed">Closing a poll manually will finalize it immediately. Users who haven't voted will be locked out.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">3</div>
+                      <p className="text-sm text-pink-100/60 leading-relaxed">The "Emergency Reset" is destructive. Use it only between complete community sessions.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'analytics' && (
+              <div className="flex flex-col gap-8">
+                <div className="glass rounded-[2.5rem] p-12 relative min-h-[400px]">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+                    <div>
+                      <h2 className="text-4xl font-black text-pink-50 tracking-tighter mb-2">Real-time Metrics</h2>
+                      <p className="text-xs font-bold uppercase tracking-[0.4em] text-primary/40">Response Distribution Analysis</p>
+                    </div>
+                    <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/5 h-fit overflow-x-auto scroll-hide">
+                      {[...Array(10)].map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setSelectedPoll(i + 1)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                            selectedPoll === i + 1 ? 'bg-primary text-purple-950' : 'text-pink-100/40 hover:text-pink-100'
+                          }`}
+                        >
+                          P{(i + 1).toString().padStart(2, '0')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div className="flex flex-col gap-8">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex justify-between items-end px-2">
+                          <span className="text-4xl text-primary font-black tracking-tighter">{yesInSelected}</span>
+                          <span className="text-[10px] uppercase font-black tracking-[0.2em] text-primary/60 italic">Affirmative Force</span>
+                        </div>
+                        <div className="w-full h-4 bg-pink-900/20 rounded-full p-1 border border-white/5">
+                          <motion.div 
+                            initial={false}
+                            animate={{ width: `${(yesInSelected / (totalInSelected || 1)) * 100}%` }}
+                            className="h-full bg-primary rounded-full glow-pink"
+                          />
+                        </div>
                       </div>
-                    </td>
-                    <td className="py-4 text-center opacity-40 text-[10px] font-bold tracking-widest uppercase">
-                      Poll {v.pollNumber.toString().padStart(2, '0')}
-                    </td>
-                    <td className={`py-4 text-right text-xl font-bold ${v.choice === 'yes' ? 'text-primary active-glow' : 'text-purple-400'}`}>
-                      {v.choice.toUpperCase()}
-                    </td>
-                  </tr>
-                ))}
-                {votes.filter(v => v.pollNumber === selectedPoll).length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="py-12 text-center text-pink-100/20 italic font-light serif text-xl">
-                      Awaiting the first breath of data for Poll {selectedPoll}...
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+                      <div className="flex flex-col gap-4">
+                        <div className="flex justify-between items-end px-2">
+                          <span className="text-4xl text-purple-300 font-black tracking-tighter">{noInSelected}</span>
+                          <span className="text-[10px] uppercase font-black tracking-[0.2em] text-purple-400/60 italic">Negative Tension</span>
+                        </div>
+                        <div className="w-full h-4 bg-pink-900/20 rounded-full p-1 border border-white/5">
+                          <motion.div 
+                            initial={false}
+                            animate={{ width: `${(noInSelected / (totalInSelected || 1)) * 100}%` }}
+                            className="h-full bg-secondary rounded-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center p-12 bg-white/5 rounded-[2.5rem] border border-white/5 text-center">
+                      <p className="text-6xl font-black text-pink-50 mb-2 tracking-tighter">{totalInSelected}</p>
+                      <p className="text-xs font-bold uppercase tracking-[0.5em] text-primary mb-6">Total Responses</p>
+                      <div className="w-16 h-1 bg-primary/20 rounded-full mb-6" />
+                      <p className="text-sm text-pink-100/40 italic font-medium max-w-xs uppercase tracking-widest leading-loose">
+                        Consensus strength: {totalInSelected > 0 ? (Math.max(yesInSelected, noInSelected) / totalInSelected * 100).toFixed(0) : 0}% Dominance
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'voters' && (
+              <div className="glass rounded-[3rem] p-10 flex flex-col relative overflow-hidden min-h-[600px]">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+                  <div>
+                    <h2 className="text-3xl font-bold text-pink-50 tracking-tight">Auditor Room</h2>
+                    <p className="text-xs tracking-[0.4em] uppercase text-primary/40 font-bold mt-1">Granular Vote Inspection</p>
+                  </div>
+                  <button 
+                    onClick={handleRandomize}
+                    className="glass px-6 py-3 rounded-2xl text-primary hover:bg-primary/20 transition-all border border-primary/30 flex items-center gap-3 group glow-pink-hover"
+                  >
+                    <Shuffle className="w-5 h-5 group-hover:rotate-180 transition-transform duration-700" />
+                    <span className="text-xs uppercase font-black tracking-widest">Randomize Spotlights</span>
+                  </button>
+                </div>
+                
+                <AnimatePresence>
+                  {randomizedVoters && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
+                    >
+                      <div className="bg-primary/10 border border-primary/20 p-8 rounded-[2rem] relative overflow-hidden flex flex-col justify-center">
+                        <div className="absolute -right-6 -bottom-6 opacity-5 rotate-12">
+                          <Check className="w-48 h-48 text-primary" />
+                        </div>
+                        <span className="text-[10px] uppercase tracking-[0.4em] text-primary font-black mb-4 flex items-center gap-2">
+                           Affirmation Spotlight
+                        </span>
+                        {randomizedVoters.yes ? (
+                          <>
+                            <p className="text-3xl text-pink-50 font-black tracking-tighter mb-1 leading-tight">{randomizedVoters.yes.userName}</p>
+                            <p className="text-xs text-pink-100/40 font-bold uppercase tracking-widest">{randomizedVoters.yes.userEmail}</p>
+                          </>
+                        ) : (
+                          <p className="text-pink-100/20 italic text-xl">Void.</p>
+                        )}
+                      </div>
+                      <div className="bg-purple-900/20 border border-purple-500/20 p-8 rounded-[2rem] relative overflow-hidden flex flex-col justify-center">
+                        <div className="absolute -right-6 -bottom-6 opacity-5 rotate-12">
+                          <X className="w-48 h-48 text-purple-400" />
+                        </div>
+                        <span className="text-[10px] uppercase tracking-[0.4em] text-purple-400 font-black mb-4 flex items-center gap-2">
+                           Negation Spotlight
+                        </span>
+                        {randomizedVoters.no ? (
+                          <>
+                            <p className="text-3xl text-pink-50 font-black tracking-tighter mb-1 leading-tight">{randomizedVoters.no.userName}</p>
+                            <p className="text-xs text-pink-100/40 font-bold uppercase tracking-widest">{randomizedVoters.no.userEmail}</p>
+                          </>
+                        ) : (
+                          <p className="text-pink-100/20 italic text-xl">Void.</p>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+                <div className="flex-1 flex flex-col overflow-hidden">
+                   <div className="flex gap-2 mb-6 overflow-x-auto scroll-hide pb-2">
+                      {[...Array(10)].map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setSelectedPoll(i + 1)}
+                          className={`w-12 h-12 rounded-full shrink-0 text-xs font-black transition-all border ${
+                            selectedPoll === i + 1 
+                              ? 'bg-primary text-purple-950 border-primary' 
+                              : 'bg-white/2 text-pink-100/30 border-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          {i + 1}
+                        </button>
+                      ))}
+                   </div>
+
+                  <div className="overflow-y-auto scroll-hide pr-2">
+                    <table className="w-full text-left">
+                      <thead className="text-[10px] uppercase tracking-[0.3em] text-pink-100/30 border-b border-white/5 sticky top-0 bg-transparent backdrop-blur-md">
+                        <tr>
+                          <th className="pb-6 font-black">Identity</th>
+                          <th className="pb-6 font-black text-center">Batch</th>
+                          <th className="pb-6 font-black text-right">Impact</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        {votes.filter(v => v.pollNumber === selectedPoll).map((v, idx) => (
+                          <tr key={idx} className="group hover:bg-white/2 transition-colors border-b border-white/2">
+                            <td className="py-6">
+                              <div className="flex flex-col">
+                                <span className="text-xl text-pink-100 font-black tracking-tighter mb-0.5 group-hover:text-primary transition-colors">{v.userName}</span>
+                                <span className="text-[10px] text-pink-100/30 font-bold uppercase tracking-widest">{v.userEmail}</span>
+                              </div>
+                            </td>
+                            <td className="py-6 text-center text-[10px] font-black uppercase tracking-widest text-white/20">
+                              Session {v.pollNumber.toString().padStart(2, '0')}
+                            </td>
+                            <td className={`py-6 text-right text-2xl font-black ${v.choice === 'yes' ? 'text-primary' : 'text-purple-400'}`}>
+                              {v.choice.toUpperCase()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </main>
     </div>
   );
 };
 
-const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: SystemState, userVote: Vote | null }) => {
+const UserVote = ({ user, currentPoll, userVote, clockOffset = 0 }: { user: User, currentPoll: SystemState, userVote: Vote | null, clockOffset?: number }) => {
   const [casting, setCasting] = useState(false);
   const [isTimedOut, setIsTimedOut] = useState(false);
 
@@ -468,7 +615,8 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
     
     const checkTimeout = () => {
       const target = currentPoll.endsAt.toDate ? currentPoll.endsAt.toDate().getTime() : currentPoll.endsAt;
-      if (Date.now() >= target) {
+      const now = Date.now() + clockOffset;
+      if (now >= target) {
         setIsTimedOut(true);
       } else {
         setIsTimedOut(false);
@@ -478,7 +626,7 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
     checkTimeout();
     const interval = setInterval(checkTimeout, 1000);
     return () => clearInterval(interval);
-  }, [currentPoll.endsAt, currentPoll.isActive]);
+  }, [currentPoll.endsAt, currentPoll.isActive, clockOffset]);
 
   const castVote = async (choice: 'yes' | 'no') => {
     if (casting || userVote || isTimedOut || !currentPoll.isActive) return;
@@ -576,7 +724,7 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
 
                 {currentPoll.isActive && (
                   <div className="glass px-6 py-3 md:px-8 md:py-4 rounded-2xl border border-primary/20 bg-white/5 backdrop-blur-md shadow-lg">
-                    <CountdownTimer endsAt={currentPoll.endsAt} />
+                    <CountdownTimer endsAt={currentPoll.endsAt} offset={clockOffset} />
                   </div>
                 )}
                 
@@ -613,6 +761,7 @@ export default function App() {
   const [systemState, setSystemState] = useState<SystemState>({ currentPollNumber: 0, isActive: false });
   const [votes, setVotes] = useState<Vote[]>([]);
   const [userVote, setUserVote] = useState<Vote | null>(null);
+  const [clockOffset, setClockOffset] = useState(0);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
@@ -623,6 +772,26 @@ export default function App() {
     return () => {
       unsubAuth();
     };
+  }, []);
+
+  // Coarse clock sync on load
+  useEffect(() => {
+    const sync = async () => {
+      try {
+        const start = Date.now();
+        const resp = await fetch(window.location.origin, { method: 'HEAD', cache: 'no-store' });
+        const serverDate = resp.headers.get('Date');
+        if (serverDate) {
+          const serverTime = new Date(serverDate).getTime();
+          const end = Date.now();
+          const latency = (end - start) / 2;
+          setClockOffset(serverTime + latency - end);
+        }
+      } catch (e) {
+        console.warn("Initial clock sync failed:", e);
+      }
+    };
+    sync();
   }, []);
 
   useEffect(() => {
@@ -643,7 +812,21 @@ export default function App() {
     // Listener for system state
     const unsubState = onSnapshot(doc(db, 'system', 'state'), (s) => {
       if (s.exists()) {
-        setSystemState(s.data() as SystemState);
+        const data = s.data() as SystemState;
+        
+        // Refined clock sync whenever a push occurs
+        if (data.lastPushedAt && !s.metadata.hasPendingWrites) {
+          const serverT = data.lastPushedAt.toMillis ? data.lastPushedAt.toMillis() : data.lastPushedAt;
+          if (Math.abs(serverT - Date.now()) < 3600000) { // Within 1 hour
+            const newOffset = serverT - Date.now();
+            // We use a small threshold to avoid jitter, but 9s definitely triggers it
+            if (Math.abs(newOffset - clockOffset) > 1000) {
+              setClockOffset(newOffset);
+            }
+          }
+        }
+        
+        setSystemState(data);
       } else if (user.email === ADMIN_EMAIL) {
         // Auto-bootstrap if it's the admin and document is missing
         console.log("Bootstrapping system state...");
@@ -716,7 +899,7 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                 >
-                  <AdminPanel currentPoll={systemState} votes={votes} />
+                  <AdminPanel currentPoll={systemState} votes={votes} clockOffset={clockOffset} />
                 </motion.div>
               ) : (
                 <motion.div
@@ -725,7 +908,7 @@ export default function App() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.02 }}
                 >
-                  <UserVote user={user} currentPoll={systemState} userVote={userVote} />
+                  <UserVote user={user} currentPoll={systemState} userVote={userVote} clockOffset={clockOffset} />
                 </motion.div>
               )}
             </AnimatePresence>
