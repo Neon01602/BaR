@@ -383,9 +383,30 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
 
 const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: SystemState, userVote: Vote | null }) => {
   const [casting, setCasting] = useState(false);
+  const [isTimedOut, setIsTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!currentPoll.endsAt || !currentPoll.isActive) {
+      setIsTimedOut(false);
+      return;
+    }
+    
+    const checkTimeout = () => {
+      const target = currentPoll.endsAt.toDate ? currentPoll.endsAt.toDate().getTime() : currentPoll.endsAt;
+      if (Date.now() >= target) {
+        setIsTimedOut(true);
+      } else {
+        setIsTimedOut(false);
+      }
+    };
+
+    checkTimeout();
+    const interval = setInterval(checkTimeout, 1000);
+    return () => clearInterval(interval);
+  }, [currentPoll.endsAt, currentPoll.isActive]);
 
   const castVote = async (choice: 'yes' | 'no') => {
-    if (casting || userVote || !currentPoll.isActive) return;
+    if (casting || userVote || isTimedOut || !currentPoll.isActive) return;
     setCasting(true);
     try {
       const voteId = `${currentPoll.currentPollNumber}_${user.uid}`;
@@ -406,7 +427,7 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
     }
   };
 
-  const showWaitingRoom = !currentPoll.isActive;
+  const showWaitingRoom = !currentPoll.isActive || isTimedOut;
 
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-start text-center px-4 py-8 md:py-12">
@@ -427,7 +448,9 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
             </div>
             <div className="w-12 h-0.5 bg-primary/20 rounded-full mb-8" />
             <p className="text-pink-100/60 font-light text-base md:text-xl tracking-wide uppercase leading-relaxed max-w-[280px] md:max-w-none">
-              The next session is being synthesized.
+              {isTimedOut 
+                ? 'The session window has closed. Awaiting synchronization.' 
+                : 'The next session is being synthesized.'}
             </p>
           </motion.div>
         ) : userVote ? (
@@ -487,7 +510,7 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
               <div className="flex flex-row w-full gap-3 md:gap-6 h-20 md:h-28">
                 <button 
                   onClick={() => castVote('yes')}
-                  disabled={casting || !!userVote || !currentPoll.isActive}
+                  disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
                   className="flex-1 group relative overflow-hidden bg-primary text-white rounded-2xl md:rounded-3xl text-xl md:text-3xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(244,114,182,0.15)]"
                 >
                   <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -495,7 +518,7 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
                 </button>
                 <button 
                   onClick={() => castVote('no')}
-                  disabled={casting || !!userVote || !currentPoll.isActive}
+                  disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
                   className="flex-1 group relative overflow-hidden bg-purple-950/40 border-2 border-white/10 text-primary rounded-2xl md:rounded-3xl text-xl md:text-3xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -552,7 +575,8 @@ export default function App() {
         console.log("Bootstrapping system state...");
         setDoc(doc(db, 'system', 'state'), { 
           currentPollNumber: 0, 
-          isActive: false 
+          isActive: false,
+          durationSeconds: 20
         }).catch(err => console.error("Bootstrap failed. Check rules for /system/state. Error:", err));
       }
     });
