@@ -5,7 +5,43 @@ import { doc, onSnapshot, collection, query, orderBy, setDoc, updateDoc, serverT
 import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, LogOut, Heart, Sparkles, Check, X, Users, RotateCcw, ChevronRight, Shuffle } from 'lucide-react';
 
+const FIXED_DURATION = 20;
+
 // Components
+const Header = ({ user, isAdmin }: { user: any, isAdmin: boolean }) => {
+  return (
+    <header className="flex flex-row justify-between items-center mb-8 md:mb-12 gap-4 px-2">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/10 rounded-xl glow-pink hidden sm:block">
+          <Sparkles className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex flex-col">
+          <h1 className="text-xl md:text-2xl font-black text-primary tracking-tighter leading-none">Bias & Reality</h1>
+          <p className="text-[8px] md:text-[10px] uppercase tracking-[0.3em] font-bold text-pink-100/40">Community Consensus</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 md:gap-4 text-right bg-white/5 p-2 md:p-3 rounded-xl border border-white/5 backdrop-blur-sm">
+        <div className="hidden xs:flex flex-col">
+          <span className="text-[8px] uppercase tracking-[0.2em] text-pink-300/40 font-bold leading-none mb-1">
+            {isAdmin ? 'Architect' : 'Citizen'}
+          </span>
+          <span className="text-[10px] md:text-xs font-semibold text-pink-50 truncate max-w-[80px] md:max-w-[120px]">
+            {user.displayName || user.email.split('@')[0]}
+          </span>
+        </div>
+        <button 
+          onClick={() => signOut(auth)}
+          className="w-8 h-8 md:w-10 md:h-10 rounded-full glass flex items-center justify-center text-primary hover:bg-primary hover:text-purple-950 transition-all border-primary/30"
+          title="Sign Out"
+        >
+          <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        </button>
+      </div>
+    </header>
+  );
+};
+
 const Auth = ({ user, loading }: { user: User | null, loading: boolean }) => {
   if (loading) return <div className="flex items-center justify-center h-screen">
     <motion.div 
@@ -89,7 +125,6 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
   const [totalNo, setTotalNo] = useState(0);
   const [selectedPoll, setSelectedPoll] = useState(currentPoll.currentPollNumber || 1);
   const [randomizedVoters, setRandomizedVoters] = useState<{ yes: Vote | null, no: Vote | null } | null>(null);
-  const FIXED_DURATION = 20;
 
   const handleRandomize = () => {
     const pollVotes = votes.filter(v => v.pollNumber === selectedPoll);
@@ -470,105 +505,104 @@ const UserVote = ({ user, currentPoll, userVote }: { user: User, currentPoll: Sy
   const showWaitingRoom = !currentPoll.isActive || isTimedOut;
 
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-start text-center px-4 py-8 md:py-12">
-      <AnimatePresence mode="wait">
-        {showWaitingRoom ? (
-          <motion.div 
-            key="inactive"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="max-w-md w-full glass p-10 md:p-16 rounded-[3rem] border border-white/10 shadow-2xl flex flex-col items-center"
-          >
-            <div className="mb-8 p-5 bg-primary/10 rounded-full inline-block glow-pink border border-primary/20">
-              <Sparkles className="w-10 h-10 text-primary" />
-            </div>
-            <div className="px-4 py-1.5 rounded-full bg-pink-900/20 border border-pink-900/30 text-[10px] font-black text-pink-300 tracking-[0.4em] uppercase mb-6">
-              Poll number {currentPoll.currentPollNumber}
-            </div>
-            <div className="w-12 h-0.5 bg-primary/20 rounded-full mb-8" />
-            <p className="text-pink-100/60 font-light text-base md:text-xl tracking-wide uppercase leading-relaxed max-w-[280px] md:max-w-none">
-              {isTimedOut 
-                ? 'The session window has closed. Awaiting synchronization.' 
-                : 'The next session is being synthesized.'}
-            </p>
-          </motion.div>
-        ) : userVote ? (
-          <motion.div 
-            key="voted"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-md md:max-w-xl glass p-10 md:p-16 rounded-[3rem] border-2 border-primary/30 shadow-2xl relative overflow-hidden flex flex-col items-center"
-          >
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 blur-[80px] rounded-full" />
-            <div className="mb-8 flex justify-center">
-              <div className="p-5 bg-primary/10 rounded-full glow-pink border border-primary/30">
-                <Check className="w-10 h-10 md:w-16 md:h-16 text-primary" />
+    <div className="min-h-screen editorial-gradient flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-start px-4 mt-4 mb-8">
+        <AnimatePresence mode="wait">
+          {showWaitingRoom ? (
+            <motion.div 
+              key="inactive"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="max-w-md w-full glass p-8 md:p-12 rounded-[2.5rem] border border-white/10 shadow-2xl flex flex-col items-center"
+            >
+              <div className="mb-6 p-4 bg-primary/10 rounded-full inline-block glow-pink border border-primary/20">
+                <Sparkles className="w-8 h-8 text-primary" />
               </div>
-            </div>
-            <div className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary tracking-[0.4em] uppercase mb-8">
-              Poll number {userVote.pollNumber}
-            </div>
-            <div className="flex flex-col items-center gap-4">
-              <p className="text-pink-100/30 font-bold uppercase tracking-[0.5em] text-[10px]">Decision Recorded</p>
-              <span className={`text-6xl md:text-8xl font-black active-glow tracking-tighter ${userVote.choice === 'yes' ? 'text-primary' : 'text-purple-300'}`}>
-                {userVote.choice.toUpperCase()}
-              </span>
-            </div>
-            <div className="mt-12 pt-8 border-t border-white/10 w-full">
-              <p className="text-[10px] text-pink-100/40 font-black tracking-[0.5em] uppercase">Identity Verified</p>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div 
-            key="active"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-lg md:max-w-2xl glass p-8 md:p-16 rounded-[3rem] shadow-2xl relative overflow-hidden border border-white/10 flex flex-col items-center"
-          >
-            <div className="flex flex-col items-center w-full gap-8 md:gap-12 text-center">
-              {/* Status Header */}
-              <div className="flex flex-col items-center">
-                <div className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] md:text-xs font-black text-primary tracking-[0.4em] uppercase mb-4">
-                  Poll number {currentPoll.currentPollNumber}
-                </div>
-                <div className="w-12 h-0.5 bg-primary/30 rounded-full mb-6" />
-                <div className="p-4 bg-primary/10 rounded-full border border-primary/20 glow-pink mb-4">
-                  <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-primary" />
-                </div>
-                <p className="text-pink-100/40 text-[10px] md:text-xs uppercase tracking-[0.5em] font-bold">Session Active</p>
+              <div className="px-3 py-1 rounded-full bg-pink-900/20 border border-pink-900/30 text-[10px] font-black text-pink-300 tracking-[0.4em] uppercase mb-4">
+                Poll number {currentPoll.currentPollNumber}
               </div>
+              <div className="w-10 h-0.5 bg-primary/20 rounded-full mb-6" />
+              <p className="text-pink-100/60 font-light text-sm md:text-lg tracking-wide uppercase leading-relaxed text-center">
+                {isTimedOut 
+                  ? 'The session window has closed. Awaiting synchronization.' 
+                  : 'The next session is being synthesized.'}
+              </p>
+            </motion.div>
+          ) : userVote ? (
+            <motion.div 
+              key="voted"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-md md:max-w-xl glass p-8 md:p-12 rounded-[2.5rem] border-2 border-primary/30 shadow-2xl relative overflow-hidden flex flex-col items-center"
+            >
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 blur-[80px] rounded-full" />
+              <div className="mb-6 flex justify-center">
+                <div className="p-4 bg-primary/10 rounded-full glow-pink border border-primary/30">
+                  <Check className="w-8 h-8 md:w-12 md:h-12 text-primary" />
+                </div>
+              </div>
+              <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary tracking-[0.4em] uppercase mb-6">
+                Poll number {userVote.pollNumber}
+              </div>
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-pink-100/30 font-bold uppercase tracking-[0.5em] text-[9px]">Decision Recorded</p>
+                <span className={`text-5xl md:text-7xl font-black active-glow tracking-tighter ${userVote.choice === 'yes' ? 'text-primary' : 'text-purple-300'}`}>
+                  {userVote.choice.toUpperCase()}
+                </span>
+              </div>
+              <div className="mt-8 pt-6 border-t border-white/10 w-full">
+                <p className="text-[9px] text-pink-100/40 font-black tracking-[0.5em] uppercase text-center">Identity Verified</p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="active"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-lg md:max-w-xl glass p-6 md:p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-white/10 flex flex-col items-center"
+            >
+              <div className="flex flex-col items-center w-full gap-6 md:gap-8 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary tracking-[0.4em] uppercase mb-3">
+                    Poll number {currentPoll.currentPollNumber}
+                  </div>
+                  <div className="w-10 h-0.5 bg-primary/30 rounded-full mb-4" />
+                  <div className="p-3 bg-primary/10 rounded-full border border-primary/20 glow-pink mb-2">
+                    <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+                  </div>
+                  <p className="text-pink-100/40 text-[9px] uppercase tracking-[0.5em] font-bold">Session Active</p>
+                </div>
 
-              {/* Centered Timer */}
-              {currentPoll.isActive && (
-                <div className="glass px-6 py-4 md:px-10 md:py-6 rounded-[2rem] border border-primary/20 bg-white/5 backdrop-blur-md shadow-xl">
-                  <CountdownTimer endsAt={currentPoll.endsAt} />
+                {currentPoll.isActive && (
+                  <div className="glass px-6 py-3 md:px-8 md:py-4 rounded-2xl border border-primary/20 bg-white/5 backdrop-blur-md shadow-lg">
+                    <CountdownTimer endsAt={currentPoll.endsAt} />
+                  </div>
+                )}
+                
+                <div className="flex flex-row w-full gap-3 h-14 md:h-16">
+                  <button 
+                    onClick={() => castVote('yes')}
+                    disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
+                    className="flex-1 group relative overflow-hidden bg-primary text-white rounded-xl text-lg md:text-xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    YES
+                  </button>
+                  <button 
+                    onClick={() => castVote('no')}
+                    disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
+                    className="flex-1 group relative overflow-hidden bg-purple-950/40 border-2 border-white/10 text-primary rounded-xl text-lg md:text-xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    NO
+                  </button>
                 </div>
-              )}
-              
-              {/* Side-by-Side Buttons */}
-              <div className="flex flex-row w-full gap-3 md:gap-6 h-20 md:h-28">
-                <button 
-                  onClick={() => castVote('yes')}
-                  disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
-                  className="flex-1 group relative overflow-hidden bg-primary text-white rounded-2xl md:rounded-3xl text-xl md:text-3xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(244,114,182,0.15)]"
-                >
-                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  YES
-                </button>
-                <button 
-                  onClick={() => castVote('no')}
-                  disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
-                  className="flex-1 group relative overflow-hidden bg-purple-950/40 border-2 border-white/10 text-primary rounded-2xl md:rounded-3xl text-xl md:text-3xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  NO
-                </button>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };
@@ -671,35 +705,7 @@ export default function App() {
       
       {user && (
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8">
-          <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-pink-900/50 pb-6 mb-8 md:mb-12 gap-6">
-            <div className="flex flex-col">
-              <span className="text-primary text-[10px] tracking-[0.5em] font-bold uppercase mb-1 opacity-70">
-                {isAdmin ? 'Administrative Suite' : 'Community Voice'}
-              </span>
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-8 h-8 text-primary glow-pink" />
-                <h1 className="text-3xl md:text-5xl font-bold text-pink-100 tracking-tighter leading-none">
-                  Bias <span className="font-light opacity-50">&</span> Reality
-                </h1>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4 text-left md:text-right bg-white/5 p-3 rounded-2xl border border-white/5 backdrop-blur-sm">
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-pink-300/40 font-bold">
-                  Secure Session
-                </span>
-                <span className="text-xs font-semibold text-pink-50">{user.displayName || user.email}</span>
-              </div>
-              <button 
-                onClick={() => signOut(auth)}
-                className="w-10 h-10 rounded-full glass flex items-center justify-center text-primary hover:bg-primary hover:text-purple-950 transition-all border-primary/30"
-                title="Terminate Session"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          </header>
+          <Header user={user} isAdmin={isAdmin} />
 
           <main>
             <AnimatePresence mode="wait">
