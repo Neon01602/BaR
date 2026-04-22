@@ -87,15 +87,8 @@ const CountdownTimer = ({ endsAt, onEnd }: { endsAt: any, onEnd?: () => void }) 
 const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: Vote[] }) => {
   const [totalYes, setTotalYes] = useState(0);
   const [totalNo, setTotalNo] = useState(0);
-  const [duration, setDuration] = useState(20); // Default 20s as requested
   const [selectedPoll, setSelectedPoll] = useState(currentPoll.currentPollNumber || 1);
-
-  useEffect(() => {
-    // Sync local duration with the system state if it changes externally
-    if (currentPoll.durationSeconds && currentPoll.isActive) {
-      setDuration(currentPoll.durationSeconds);
-    }
-  }, [currentPoll.durationSeconds, currentPoll.isActive]);
+  const FIXED_DURATION = 20;
 
   useEffect(() => {
     // Only auto-snap if the admin hasn't manually diverged significantly or if it's the first load
@@ -114,7 +107,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
     if (currentPoll.currentPollNumber >= 10 && currentPoll.isActive) return;
     
     const stateRef = doc(db, 'system', 'state');
-    const endsAt = Timestamp.fromMillis(Date.now() + duration * 1000);
+    const endsAt = Timestamp.fromMillis(Date.now() + FIXED_DURATION * 1000);
     
     if (!currentPoll.isActive && currentPoll.currentPollNumber > 0 && currentPoll.currentPollNumber < 10) {
       // Re-push/Next push if currently inactive but not reset
@@ -123,7 +116,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
         currentPollNumber: nextNum,
         isActive: true,
         lastPushedAt: serverTimestamp(),
-        durationSeconds: duration,
+        durationSeconds: FIXED_DURATION,
         endsAt
       });
     } else {
@@ -133,7 +126,7 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
         currentPollNumber: nextNum > 10 ? 10 : nextNum,
         isActive: true,
         lastPushedAt: serverTimestamp(),
-        durationSeconds: duration,
+        durationSeconds: FIXED_DURATION,
         endsAt
       });
     }
@@ -227,18 +220,6 @@ const AdminPanel = ({ currentPoll, votes }: { currentPoll: SystemState, votes: V
             </div>
             
             <div className="flex flex-col w-full gap-4">
-              {!currentPoll.isActive && (
-                <div className="flex flex-col gap-2 mb-2">
-                  <label className="text-[10px] uppercase tracking-widest text-pink-100/40 font-bold ml-1">Set Duration (seconds)</label>
-                  <input 
-                    type="number" 
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    className="bg-white/5 border border-pink-900/30 rounded-xl px-4 py-2 text-pink-100 focus:outline-none focus:border-primary transition-colors text-center serif italic text-xl"
-                  />
-                </div>
-              )}
-
               {currentPoll.isActive ? (
                 <button 
                   onClick={handleStop}
