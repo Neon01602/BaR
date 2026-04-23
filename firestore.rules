@@ -57,7 +57,7 @@ service cloud.firestore {
                data.userEmail == request.auth.token.email &&
                data.userName is string &&
                data.userName.size() <= 200 &&
-               data.choice in ['yes', 'no'] &&
+               data.choice in ['bias', 'reality'] &&
                data.timestamp == request.time &&
                data.keys().hasAll(['pollNumber', 'userId', 'userEmail', 'userName', 'choice', 'timestamp']) &&
                data.keys().size() == 6;

@@ -123,20 +123,20 @@ const CountdownTimer = ({ endsAt, onEnd, offset = 0 }: { endsAt: any, onEnd?: ()
 const AdminPanel = ({ currentPoll, votes, clockOffset = 0 }: { currentPoll: SystemState, votes: Vote[], clockOffset?: number }) => {
   const [activeSection, setActiveSection] = useState<'overview' | 'manager' | 'analytics' | 'voters'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [totalYes, setTotalYes] = useState(0);
-  const [totalNo, setTotalNo] = useState(0);
+  const [totalBias, setTotalBias] = useState(0);
+  const [totalReality, setTotalReality] = useState(0);
   const [selectedPoll, setSelectedPoll] = useState(currentPoll.currentPollNumber || 1);
-  const [randomizedVoters, setRandomizedVoters] = useState<{ yes: Vote | null, no: Vote | null } | null>(null);
+  const [randomizedVoters, setRandomizedVoters] = useState<{ bias: Vote | null, reality: Vote | null } | null>(null);
 
   const handleRandomize = () => {
     const pollVotes = votes.filter(v => v.pollNumber === selectedPoll);
-    const yesVoters = pollVotes.filter(v => v.choice === 'yes');
-    const noVoters = pollVotes.filter(v => v.choice === 'no');
+    const biasVoters = pollVotes.filter(v => v.choice === 'bias');
+    const realityVoters = pollVotes.filter(v => v.choice === 'reality');
 
-    const randomYes = yesVoters.length > 0 ? yesVoters[Math.floor(Math.random() * yesVoters.length)] : null;
-    const randomNo = noVoters.length > 0 ? noVoters[Math.floor(Math.random() * noVoters.length)] : null;
+    const randomBias = biasVoters.length > 0 ? biasVoters[Math.floor(Math.random() * biasVoters.length)] : null;
+    const randomReality = realityVoters.length > 0 ? realityVoters[Math.floor(Math.random() * realityVoters.length)] : null;
 
-    setRandomizedVoters({ yes: randomYes, no: randomNo });
+    setRandomizedVoters({ bias: randomBias, reality: randomReality });
   };
 
   useEffect(() => {
@@ -147,8 +147,8 @@ const AdminPanel = ({ currentPoll, votes, clockOffset = 0 }: { currentPoll: Syst
 
   useEffect(() => {
     const activeVotes = votes.filter(v => v.pollNumber === selectedPoll);
-    setTotalYes(activeVotes.filter(v => v.choice === 'yes').length);
-    setTotalNo(activeVotes.filter(v => v.choice === 'no').length);
+    setTotalBias(activeVotes.filter(v => v.choice === 'bias').length);
+    setTotalReality(activeVotes.filter(v => v.choice === 'reality').length);
   }, [votes, selectedPoll]);
 
   const handlePush = async () => {
@@ -198,8 +198,8 @@ const AdminPanel = ({ currentPoll, votes, clockOffset = 0 }: { currentPoll: Syst
 
   const pollVotes = votes.filter(v => v.pollNumber === selectedPoll);
   const totalInSelected = pollVotes.length;
-  const yesInSelected = pollVotes.filter(v => v.choice === 'yes').length;
-  const noInSelected = pollVotes.filter(v => v.choice === 'no').length;
+  const biasInSelected = pollVotes.filter(v => v.choice === 'bias').length;
+  const realityInSelected = pollVotes.filter(v => v.choice === 'reality').length;
 
   const sections = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
@@ -449,26 +449,26 @@ const AdminPanel = ({ currentPoll, votes, clockOffset = 0 }: { currentPoll: Syst
                     <div className="flex flex-col gap-8">
                       <div className="flex flex-col gap-4">
                         <div className="flex justify-between items-end px-2">
-                          <span className="text-4xl text-primary font-black tracking-tighter">{yesInSelected}</span>
-                          <span className="text-[10px] uppercase font-black tracking-[0.2em] text-primary/60 italic">Affirmative Force</span>
+                          <span className="text-4xl text-primary font-black tracking-tighter">{biasInSelected}</span>
+                          <span className="text-[10px] uppercase font-black tracking-[0.2em] text-primary/60 italic">Bias Magnitude</span>
                         </div>
                         <div className="w-full h-4 bg-pink-900/20 rounded-full p-1 border border-white/5">
                           <motion.div 
                             initial={false}
-                            animate={{ width: `${(yesInSelected / (totalInSelected || 1)) * 100}%` }}
+                            animate={{ width: `${(biasInSelected / (totalInSelected || 1)) * 100}%` }}
                             className="h-full bg-primary rounded-full glow-pink"
                           />
                         </div>
                       </div>
                       <div className="flex flex-col gap-4">
                         <div className="flex justify-between items-end px-2">
-                          <span className="text-4xl text-purple-300 font-black tracking-tighter">{noInSelected}</span>
-                          <span className="text-[10px] uppercase font-black tracking-[0.2em] text-purple-400/60 italic">Negative Tension</span>
+                          <span className="text-4xl text-purple-300 font-black tracking-tighter">{realityInSelected}</span>
+                          <span className="text-[10px] uppercase font-black tracking-[0.2em] text-purple-400/60 italic">Reality Stability</span>
                         </div>
                         <div className="w-full h-4 bg-pink-900/20 rounded-full p-1 border border-white/5">
                           <motion.div 
                             initial={false}
-                            animate={{ width: `${(noInSelected / (totalInSelected || 1)) * 100}%` }}
+                            animate={{ width: `${(realityInSelected / (totalInSelected || 1)) * 100}%` }}
                             className="h-full bg-secondary rounded-full"
                           />
                         </div>
@@ -480,7 +480,7 @@ const AdminPanel = ({ currentPoll, votes, clockOffset = 0 }: { currentPoll: Syst
                       <p className="text-xs font-bold uppercase tracking-[0.5em] text-primary mb-6">Total Responses</p>
                       <div className="w-16 h-1 bg-primary/20 rounded-full mb-6" />
                       <p className="text-sm text-pink-100/40 italic font-medium max-w-xs uppercase tracking-widest leading-loose">
-                        Consensus strength: {totalInSelected > 0 ? (Math.max(yesInSelected, noInSelected) / totalInSelected * 100).toFixed(0) : 0}% Dominance
+                        Consensus strength: {totalInSelected > 0 ? (Math.max(biasInSelected, realityInSelected) / totalInSelected * 100).toFixed(0) : 0}% Dominance
                       </p>
                     </div>
                   </div>
@@ -516,12 +516,12 @@ const AdminPanel = ({ currentPoll, votes, clockOffset = 0 }: { currentPoll: Syst
                           <Check className="w-48 h-48 text-primary" />
                         </div>
                         <span className="text-[10px] uppercase tracking-[0.4em] text-primary font-black mb-4 flex items-center gap-2">
-                           Affirmation Spotlight
+                           Bias Spotlight
                         </span>
-                        {randomizedVoters.yes ? (
+                        {randomizedVoters.bias ? (
                           <>
-                            <p className="text-3xl text-pink-50 font-black tracking-tighter mb-1 leading-tight">{randomizedVoters.yes.userName}</p>
-                            <p className="text-xs text-pink-100/40 font-bold uppercase tracking-widest">{randomizedVoters.yes.userEmail}</p>
+                            <p className="text-3xl text-pink-50 font-black tracking-tighter mb-1 leading-tight">{randomizedVoters.bias.userName}</p>
+                            <p className="text-xs text-pink-100/40 font-bold uppercase tracking-widest">{randomizedVoters.bias.userEmail}</p>
                           </>
                         ) : (
                           <p className="text-pink-100/20 italic text-xl">Void.</p>
@@ -532,12 +532,12 @@ const AdminPanel = ({ currentPoll, votes, clockOffset = 0 }: { currentPoll: Syst
                           <X className="w-48 h-48 text-purple-400" />
                         </div>
                         <span className="text-[10px] uppercase tracking-[0.4em] text-purple-400 font-black mb-4 flex items-center gap-2">
-                           Negation Spotlight
+                           Reality Spotlight
                         </span>
-                        {randomizedVoters.no ? (
+                        {randomizedVoters.reality ? (
                           <>
-                            <p className="text-3xl text-pink-50 font-black tracking-tighter mb-1 leading-tight">{randomizedVoters.no.userName}</p>
-                            <p className="text-xs text-pink-100/40 font-bold uppercase tracking-widest">{randomizedVoters.no.userEmail}</p>
+                            <p className="text-3xl text-pink-50 font-black tracking-tighter mb-1 leading-tight">{randomizedVoters.reality.userName}</p>
+                            <p className="text-xs text-pink-100/40 font-bold uppercase tracking-widest">{randomizedVoters.reality.userEmail}</p>
                           </>
                         ) : (
                           <p className="text-pink-100/20 italic text-xl">Void.</p>
@@ -585,7 +585,7 @@ const AdminPanel = ({ currentPoll, votes, clockOffset = 0 }: { currentPoll: Syst
                             <td className="py-6 text-center text-[10px] font-black uppercase tracking-widest text-white/20">
                               Session {v.pollNumber.toString().padStart(2, '0')}
                             </td>
-                            <td className={`py-6 text-right text-2xl font-black ${v.choice === 'yes' ? 'text-primary' : 'text-purple-400'}`}>
+                            <td className={`py-6 text-right text-2xl font-black ${v.choice === 'bias' ? 'text-primary' : 'text-purple-400'}`}>
                               {v.choice.toUpperCase()}
                             </td>
                           </tr>
@@ -628,7 +628,7 @@ const UserVote = ({ user, currentPoll, userVote, clockOffset = 0 }: { user: User
     return () => clearInterval(interval);
   }, [currentPoll.endsAt, currentPoll.isActive, clockOffset]);
 
-  const castVote = async (choice: 'yes' | 'no') => {
+  const castVote = async (choice: 'bias' | 'reality') => {
     if (casting || userVote || isTimedOut || !currentPoll.isActive) return;
     setCasting(true);
     try {
@@ -695,7 +695,7 @@ const UserVote = ({ user, currentPoll, userVote, clockOffset = 0 }: { user: User
               </div>
               <div className="flex flex-col items-center gap-3">
                 <p className="text-pink-100/30 font-bold uppercase tracking-[0.5em] text-[9px]">Decision Recorded</p>
-                <span className={`text-5xl md:text-7xl font-black active-glow tracking-tighter ${userVote.choice === 'yes' ? 'text-primary' : 'text-purple-300'}`}>
+                <span className={`text-5xl md:text-7xl font-black active-glow tracking-tighter ${userVote.choice === 'bias' ? 'text-primary' : 'text-purple-300'}`}>
                   {userVote.choice.toUpperCase()}
                 </span>
               </div>
@@ -730,20 +730,20 @@ const UserVote = ({ user, currentPoll, userVote, clockOffset = 0 }: { user: User
                 
                 <div className="flex flex-row w-full gap-3 h-14 md:h-16">
                   <button 
-                    onClick={() => castVote('yes')}
+                    onClick={() => castVote('bias')}
                     disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
                     className="flex-1 group relative overflow-hidden bg-primary text-white rounded-xl text-lg md:text-xl font-black tracking-tighter glow-pink hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    YES
+                    BIAS
                   </button>
                   <button 
-                    onClick={() => castVote('no')}
+                    onClick={() => castVote('reality')}
                     disabled={casting || !!userVote || isTimedOut || !currentPoll.isActive}
                     className="flex-1 group relative overflow-hidden bg-purple-950/40 border-2 border-white/10 text-primary rounded-xl text-lg md:text-xl font-black tracking-tighter hover:bg-purple-900/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    NO
+                    REALITY
                   </button>
                 </div>
               </div>

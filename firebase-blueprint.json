@@ -22,7 +22,7 @@
         "userId": { "type": "string" },
         "userEmail": { "type": "string" },
         "userName": { "type": "string" },
-        "choice": { "type": "string", "enum": ["yes", "no"] },
+        "choice": { "type": "string", "enum": ["bias", "reality"] },
         "timestamp": { "type": "object", "format": "google-firestore-timestamp" }
       },
       "required": ["pollNumber", "userId", "userEmail", "userName", "choice", "timestamp"]

@@ -47,6 +47,6 @@ export interface Vote {
   userId: string;
   userEmail: string;
   userName: string;
-  choice: 'yes' | 'no';
+  choice: 'bias' | 'reality';
   timestamp: any;
 }
